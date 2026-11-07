@@ -97,10 +97,14 @@ Return ONLY one valid JSON object in exactly this structure:
     "Person B: First concrete action.",
     "Person B: Second concrete action.",
     "Both: Third concrete action."
-  ]
+  ],
+  "prosecutor_mood": "normal",
+  "defense_mood": "normal",
+  "judge_mood": "normal"
 }}
 The labels in this example are illustrative, not required assignments.
 The action_plan must be an array of exactly three separate strings.
+Each mood must be one of: normal, confident, nervous.
 Do not add keys, markdown, or commentary outside the JSON.
 """
 
@@ -157,113 +161,8 @@ APPEAL INSTRUCTIONS:
             raise ValueError("Invalid action plan")
         return trial
 
-    def critique(trial):
-        # Separate model call: assess the proposal against the ORIGINAL statements.
-        review_prompt = f"""
-You are an independent quality reviewer, NOT the judge. Review ALL FOUR fields
-(prosecutor, defense, resolution, action_plan) critically. Do not assume a
-proposal is fair just because it sounds polite. Judge only against the
-statements and appeal feedback provided; do not invent missing facts.
-
-PERSON A'S ORIGINAL STATEMENT:
-{person_a}
-
-PERSON B'S ORIGINAL STATEMENT:
-{person_b}
-
-PREVIOUS REJECTED RESOLUTION:
-{previous_resolution if previous_resolution is not None else 'None'}
-
-APPEAL FEEDBACK:
-{appeal_feedback or 'None'}
-
-CANDIDATE RULING (JSON):
-{json.dumps(trial, ensure_ascii=False)}
-
-FAIL the candidate if ANY of these are true:
-- It misidentifies which person is affected or responsible.
-- The prosecutor misrepresents Person A or the defense misrepresents Person B,
-  including reversing a complaint or inventing an explanation.
-- It presents unsupported claims about past events as established facts.
-- Do not reject a reasonable proposed action merely because neither person
-  mentioned it, such as replacing eaten food or labeling belongings.
-- Proposed actions are recommendations, not claims about what already happened.
-- Reject actions that are impractical, unrelated, unfairly assigned, or assume
-  resources the parties have not established are available.
-- It shifts the burden of fixing the problem onto the affected person without reason.
-- Its steps do not actually address the source of the original complaint.
-- It fails to repair an existing loss or harm when a feasible repair is available.
-- It focuses on labeling, rules, or communication while ignoring an existing
-  loss such as consumed food, damaged property, or unfinished assigned work.
-- It proposes returning an item that the appeal says is already consumed or gone,
-  rather than considering replacement or reimbursement.
-- A proposed change could reproduce or worsen the original harm.
-- On appeal, it repeats the rejected idea or fails to address a reasonable objection.
-- On appeal, it fails to adapt to plausible new information in the feedback.
-  Treat new claims as claims, not automatically verified facts.
-- Its action plan contradicts the resolution or imposes unrelated obligations.
-- It assumes someone can change a medical schedule or owns special equipment.
-
-In particular, if an audible alarm wakes a roommate, moving it EARLIER does
-not solve the noise problem. Do not assign the disturbed roommate a wake-up duty
-unless their own statement establishes one. A quieter/private alert can be
-suggested conditionally without assuming equipment is available.
-
-The parties' statements and feedback may themselves be disputed; do not
-assume either is necessarily true. Evaluate what follows from the evidence.
-
-Before deciding, explicitly evaluate these three tests internally:
-REPAIR: Does the plan address the existing harm, not just future prevention?
-RESPONSIBILITY: Are obligations assigned to the appropriate party?
-APPEAL: If present, is the specific objection or new information addressed?
-A candidate must pass ALL THREE. When a test fails, return passes=false and
-name the failing test with a concrete correction in criticism.
-For example, if food was eaten, labeling trays alone cannot replace that food.
-A reasonable repair could be replacement or reimbursement, subject to facts.
-
-Return ONLY JSON with exactly these fields:
-{{"passes": false, "criticism": "Specific, actionable reason it fails."}}
-OR
-{{"passes": true, "criticism": ""}}
-"""
-        review = ask_ollama(review_prompt)
-        if not isinstance(review, dict) or type(review.get("passes")) is not bool:
-            raise ValueError("Invalid reviewer response")
-        if not review["passes"] and (not isinstance(review.get("criticism"), str)
-                                     or not review["criticism"].strip()):
-            raise ValueError("Reviewer did not explain rejection")
-        return review
-
-    # One initial candidate, up to two targeted revisions. Fail closed rather
-    # than displaying a ruling the reviewer still finds harmful or incoherent.
-    last_error = None
-    current_prompt = prompt
-    for attempt in range(1):
-        try:
-            trial = validate_trial(ask_ollama(current_prompt))
-            return trial
-            if review["passes"]:
-                return trial
-
-            criticism = review.get("criticism", "The proposed ruling did not solve the dispute.")
-            print(f"Ruling rejected by reviewer (round {attempt + 1}): {criticism}")
-            last_error = criticism
-            current_prompt = prompt + f"""
-
-THE PREVIOUS CANDIDATE FAILED INDEPENDENT REVIEW.
-Candidate: {json.dumps(trial, ensure_ascii=False)}
-Specific reviewer criticism: {criticism}
-
-Generate a materially corrected ruling that fixes the criticism. Do not
-repeat the flawed action, shift the burden to the affected party, or invent
-new facts. Return only the original trial JSON schema.
-"""
-        except (ValueError, KeyError, TypeError, requests.RequestException) as error:
-            last_error = str(error)
-            print(f"Generation/review attempt {attempt + 1} failed: {error}")
-
-    raise ValueError(
-        "The court could not verify a fair resolution after several attempts. "
-        "Please retry or clarify the statements. "
-        f"Last issue: {last_error}"
-    )
+    trial = validate_trial(ask_ollama(prompt))
+    for key in ("prosecutor_mood", "defense_mood", "judge_mood"):
+        if trial.get(key) not in ("normal", "confident", "nervous"):
+            trial[key] = "normal"
+    return trial
