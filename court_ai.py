@@ -3,7 +3,7 @@ import json
 import requests
 
 OLLAMA_URL = "http://localhost:11434/api/generate"
-MODEL = "qwen2.5:3b"
+MODEL = "qwen2.5:7b"
 
 
 def generate_trial(person_a, person_b):

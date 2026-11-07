@@ -743,6 +743,42 @@ def choose(side, value):
     st.session_state.flash = "SUSTAINED!" if value == "accept" else "OVERRULED!"
 
 
+def retry_resolution():
+    a, b = st.session_state.case["person_a"], st.session_state.case["person_b"]
+    previous = st.session_state.trial["resolution"]
+    feedback = st.session_state.get("appeal_feedback", "").strip()
+    try:
+        if st.session_state.demo_mode:
+            updated = validate_trial(demo_trial(a, b))
+        else:
+            updated = validate_trial(generate_trial(a, b, previous_resolution=previous, appeal_feedback=feedback))
+    except Exception as exc:
+        st.error(f"The court could not prepare another resolution: {exc}")
+        return
+    st.session_state.round += 1
+    st.session_state.trial["resolution"] = updated["resolution"]
+    st.session_state.trial["action_plan"] = updated["action_plan"]
+    st.session_state.choices = {"a": None, "b": None}
+    st.session_state.stage = "RESOLUTION"
+
+l["resolution"]
+    feedback = st.session_state.get("appeal_feedback", "").strip()
+    try:
+        if st.session_state.demo_mode:
+            updated = validate_trial(demo_trial(a, b))
+        else:
+            updated = validate_trial(generate_trial(a, b, previous_resolution=previous, appeal_feedback=feedback))
+    except Exception as exc:
+        st.error(f"The court could not prepare another resolution: {exc}")
+        return
+    st.session_state.round += 1
+    st.session_state.trial["resolution"] = updated["resolution"]
+    st.session_state.trial["action_plan"] = updated["action_plan"]
+    st.session_state.choices = {"a": None, "b": None}
+    st.session_state.stage = "RESOLUTION"
+
+>>>>>>> a758564859ee01b4b240fb49753caf7d34ae8ccb
+
 # =====================================================================
 #  SCREENS
 # =====================================================================
@@ -897,6 +933,7 @@ else:
             reward_cards(*st.session_state.rewards)
             st.markdown('<div class="section-label">📜 FINAL ACTION PLAN</div>', unsafe_allow_html=True)
             evidence_cards(trial.get("action_plan", []))
+        
         else:
             courtroom(active=["judge"], moods={"judge": "nervous", "pros": "nervous", "def": "nervous"})
             if st.session_state.round < MAX_ROUNDS:
@@ -905,27 +942,11 @@ else:
             else:
                 dialogue("judge", "The proposed resolution was not accepted by both parties, "
                                   "and this court has run out of attempts.")
+
             st.markdown('<div class="verdict fail"><div class="verdict-word">NO DEAL</div></div>',
                         unsafe_allow_html=True)
             reward_cards(*st.session_state.rewards)
             if st.session_state.round < MAX_ROUNDS:
-                st.button("Request another resolution", key="retry", on_click=retry_resolution,
-                          use_container_width=True)
-            else:
-                st.warning("The court has reached its maximum number of resolution attempts.")
-        st.button("Start a new trial", key="reset_verdict", on_click=reset_trial, use_container_width=True)
-
-    with st.expander("📁 View submitted statements", expanded=False):
-        b_col, a_col = st.columns(2)
-        with b_col:
-            st.markdown("**PERSON B**")
-            st.write(case["person_b"])
-        with a_col:
-            st.markdown("**PERSON A**")
-            st.write(case["person_a"])
-
-    st.divider()
-    if stage_name != "VERDICT":
-        st.button("↺ Abandon case / New trial", key="reset_sidebar", on_click=reset_trial)
-    st.markdown('<p class="small-note">COURT OF AI · A fictional mediation experience, not legal advice.</p>',
-                unsafe_allow_html=True)
+                st.text_area("Why was the ruling rejected? (optional)", key="appeal_feedback",
+                             placeholder="Explain what the judge got wrong...", height=110)
+                st.button("Request revised ruling", key="retry", on_click=retry_resolution,
