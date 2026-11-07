@@ -14,3 +14,7 @@ print(result["defense"])
 
 print("\nRESOLUTION:")
 print(result["resolution"])
+
+print("\nACTION PLAN:")
+for step in result["action_plan"]:
+    print("-", step)
