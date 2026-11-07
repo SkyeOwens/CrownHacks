@@ -159,6 +159,7 @@ h3 {font-size: .9rem !important; line-height: 1.6 !important;}
 .stApp .caseboard-copy {font:1.25rem/1.25 'VT323',monospace;color:var(--ink);overflow-wrap:anywhere;}
 .caseboard-warning {margin-top:.7rem;background:#f7e6b8;border:3px dashed var(--gold);padding:.65rem .8rem;font:1.15rem/1.25 'VT323',monospace;color:var(--ink);}
 @media(max-width:650px){.caseboard-grid{grid-template-columns:1fr;}}
+
 /* ---------- action-plan cards ---------- */
 .evidence {display: flex; gap: .9rem; align-items: flex-start; margin: .6rem 0; padding: .8rem 1rem; background: var(--cream); border: 4px solid var(--line); box-shadow: 5px 5px 0 var(--dark);}
 .evidence-tag {flex: none; padding: .45rem .5rem; background: var(--gold); color: #fff; font: .5rem 'Press Start 2P', monospace; border: 3px solid var(--dark);}
@@ -704,8 +705,8 @@ SAMPLE_B = "I thought they were leftovers from the group order. I should have as
 
 def demo_trial(person_a, person_b):
     return {
-        "prosecutor": f"Person A says: {person_a} The complaint is that their side of the story was not respected.",
-        "defense": f"Person B says: {person_b} That explanation matters, but asking first would have avoided the dispute.",
+        "prosecutor": person_a,
+        "defense": person_b,
         "resolution": "Person A deserves to have their belongings respected. Person B should acknowledge the mistake and make it right without turning a small disagreement into a bigger conflict.",
         "action_plan": [
             "Person B: Apologize directly to Person A for taking the fries without checking.",
@@ -974,17 +975,17 @@ else:
                 f'ROUND {st.session_state.round}/{MAX_ROUNDS}</div>', unsafe_allow_html=True)
     tracker(stage_name)
     if stage_name in ("PROSECUTION", "DEFENSE", "RESOLUTION"):
-        with st.expander("🔎 OPEN CASE INVESTIGATION BOARD", expanded=(stage_name == "PROSECUTION")):
+        with st.expander("🔎 OPEN CASE INVESTIGATION BOARD", expanded=True):
             investigation_board(case)
 
     if stage_name == "PROSECUTION":
         courtroom(active=["pros"], moods={"pros": mood("prosecutor_mood")})
-        dialogue("pros", named(trial["prosecutor"]))
+        dialogue("pros", f"{st.session_state.name_a} states: {case['person_a']}")
         st.button("Hear the defense ▶", key="next", on_click=advance, use_container_width=True)
 
     elif stage_name == "DEFENSE":
         courtroom(active=["def"], moods={"def": mood("defense_mood"), "pros": mood("prosecutor_mood")})
-        dialogue("def", named(trial["defense"]))
+        dialogue("def", f"{st.session_state.name_b} states: {case['person_b']}")
         st.button("Approach the bench ▶", key="next", on_click=advance, use_container_width=True)
 
     elif stage_name == "RESOLUTION":
