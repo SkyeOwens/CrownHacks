@@ -1,7 +1,11 @@
 {
-  "trials": 0,
-  "settled": 0,
-  "achievements": [],
+  "trials": 3,
+  "settled": 1,
+  "achievements": [
+    "first_trial",
+    "settled_r1",
+    "snack"
+  ],
   "theme": "classic",
   "outfit": "classic"
 }
