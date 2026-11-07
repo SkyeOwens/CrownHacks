@@ -1,20 +1,44 @@
 
 from court_ai import generate_trial
 
-result = generate_trial(
-    "My roommate keeps eating my groceries without asking.",
-    "I thought the groceries were for everyone."
-)
+cases = [
+    (
+        "Roommate Groceries",
+        "My roommate keeps eating my groceries without asking.",
+        "I thought the groceries were for everyone."
+    ),
+    (
+        "Dirty Dishes",
+        "My roommate leaves dirty dishes in the sink for days.",
+        "I've been overwhelmed with exams and haven't had time."
+    ),
+    (
+        "Group Project",
+        "My teammate hasn't completed their assigned work.",
+        "I've been struggling to understand the assignment."
+    )
+]
 
-print("\nPROSECUTOR:")
-print(result["prosecutor"])
+for title, person_a, person_b in cases:
+    print("\n" + "=" * 50)
+    print("CASE:", title)
+    print("=" * 50)
 
-print("\nDEFENSE:")
-print(result["defense"])
+    try:
+        trial = generate_trial(person_a, person_b)
 
-print("\nRESOLUTION:")
-print(result["resolution"])
+        print("\nPROSECUTOR:")
+        print(trial["prosecutor"])
 
-print("\nACTION PLAN:")
-for step in result["action_plan"]:
-    print("-", step)
+        print("\nDEFENSE:")
+        print(trial["defense"])
+
+        print("\nRESOLUTION:")
+        print(trial["resolution"])
+
+        print("\nACTION PLAN:")
+        for step in trial["action_plan"]:
+            print("-", step)
+
+    except Exception as error:
+        print("ERROR:", error)
