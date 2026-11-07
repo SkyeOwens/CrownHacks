@@ -1,5 +1,6 @@
 import base64
 import html
+import inspect
 import os
 import random
 import time
@@ -183,9 +184,46 @@ h3 {font-size: .9rem !important; line-height: 1.6 !important;}
 @keyframes ij-word {0% {transform: translateX(-120vw);} 14% {transform: translateX(3vw);} 20% {transform: translateX(0);} 26% {transform: translate(-8px, 5px);} 32% {transform: translate(8px, -5px);} 38%, 84% {transform: translate(0, 0);} 100% {transform: translateX(120vw);}}
 .interjection.good {--ij: #3f9a4a;} .interjection.bad {--ij: #c8413f;} .interjection.order {--ij: #c98a2e;}
 .stApp:has(.interjection) .court {animation: shake .5s steps(6) .2s;}
+/* ---------- title screen ---------- */
+.title-screen {
+  position: relative; height: 380px; overflow: hidden; margin: .2rem 0 1rem;
+  border: 4px solid var(--dark); box-shadow: 8px 8px 0 var(--dark);
+  background:
+    radial-gradient(ellipse at 50% 115%, rgba(242,193,78,.95) 0, rgba(242,193,78,0) 55%),
+    repeating-linear-gradient(90deg, #7a4a24 0 56px, #66391b 56px 60px);
+}
+.title-screen::before {content: ""; position: absolute; left: 0; right: 0; top: 0; height: 26px; background: repeating-linear-gradient(90deg, #4a2e18 0 10px, #6e4020 10px 70px); border-bottom: 5px solid var(--dark); z-index: 1;}
+.title-sprite {position: absolute; left: 50%; bottom: -40px; transform: translateX(-50%); image-rendering: pixelated; animation: title-bob 1.4s steps(2) infinite;}
+@keyframes title-bob {0%, 100% {transform: translate(-50%, 0);} 50% {transform: translate(-50%, -6px);}}
+.title-text {position: absolute; inset: 26px 0 0 0; z-index: 2; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center;}
+.title-kicker {font: .6rem 'Press Start 2P', monospace; color: #fff3c4; letter-spacing: .2em; text-shadow: 3px 3px 0 var(--dark); margin-bottom: 1rem;}
+.title-name {font: clamp(2.4rem, 9vw, 5rem)/1.15 'Press Start 2P', monospace; color: #fff;
+  text-shadow: 6px 6px 0 var(--red), 10px 10px 0 var(--dark), -3px -3px 0 var(--dark), 3px -3px 0 var(--dark), -3px 3px 0 var(--dark);
+  animation: title-drop .6s steps(6) both;}
+@keyframes title-drop {from {transform: translateY(-140px); opacity: 0;} to {transform: translateY(0); opacity: 1;}}
+.title-sub {margin-top: 1rem; padding: .45rem .7rem; font: .55rem 'Press Start 2P', monospace; color: var(--dark); background: #f2d48a; border: 3px solid var(--dark);}
+.title-press {position: absolute; left: 50%; bottom: 16px; transform: translateX(-50%); z-index: 2; white-space: nowrap; padding: .55rem .8rem;
+  font: .55rem 'Press Start 2P', monospace; color: #f2c14e; background: var(--dark); border: 3px solid #f2c14e; animation: blink 1.1s steps(2) infinite;}
+.versus {text-align: center; font: .7rem 'Press Start 2P', monospace; color: var(--brown); margin: .2rem 0 .6rem;}
 /* ---------- loading screen ---------- */
-.loading {text-align: center; padding: 2.2rem 1rem 2rem; margin: .4rem 0 1rem; background: var(--cream); border: 4px solid var(--dark); box-shadow: 8px 8px 0 var(--dark);}
+/* Full-screen takeover: covers the whole window, then vanishes when the next screen loads */
+.loading {
+  position: fixed; inset: 0; z-index: 99990;
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  text-align: center; padding: 2rem 1rem;
+  background-color: #f4ecdc;
+  background-image:
+    linear-gradient(rgba(107,58,22,.06) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(107,58,22,.06) 1px, transparent 1px);
+  background-size: 8px 8px;
+  border: 12px solid var(--dark); box-shadow: inset 0 0 0 8px var(--gold);
+  animation: loading-in .25s steps(3) both;
+}
+@keyframes loading-in {from {opacity: 0;} to {opacity: 1;}}
+.loading .who {width: 160px; height: auto;}
+.loading-title {font-size: clamp(.8rem, 2.4vw, 1.3rem) !important;}
 .loading .who {image-rendering: pixelated; animation: bob .6s steps(2) infinite;}
+.stApp:has(.loading) header {visibility: hidden;}
 @keyframes bob {50% {transform: translateY(-6px);}}
 .loading-title {font: .9rem 'Press Start 2P', monospace; color: var(--brown); margin: 1.2rem 0 .4rem;}
 .dots::after {content: ""; animation: dots 1.2s steps(1) infinite;}
@@ -391,6 +429,15 @@ def sprite_tag(name, scale=9, mood="normal", outfit="classic", cls="who"):
             f'height="{len(grid) * scale}" alt="{name}">')
 
 
+def named(text):
+    """Swap "Person A" / "Person B" in AI text for the players' real names."""
+    a = st.session_state.get("name_a") or "Person A"
+    b = st.session_state.get("name_b") or "Person B"
+    for label, name in (("Person A", a), ("person A", a), ("Person B", b), ("person B", b)):
+        text = str(text).replace(label, name)
+    return text
+
+
 def esc(text):
     """Escape user / AI text so it can't break the HTML layout."""
     return html.escape(str(text)).replace("\n", "<br>")
@@ -433,8 +480,8 @@ def courtroom(active=(), moods=None):
         f'<div class="chair"></div>{sprite_tag(j["sprite"], mood=moods.get("judge", "normal"))}</div>'
         f'<div class="dais"></div><div class="bench"><div class="seal">⚖</div>'
         f'<div class="plate">{j["name"]}</div></div>'
-        + lawyer("def", "13%")
         + lawyer("pros", "87%")
+        + lawyer("def", "13%")
         + '<div class="railing"></div></div>'
     )
     st.markdown(room, unsafe_allow_html=True)
@@ -500,7 +547,7 @@ def evidence_cards(plan):
     for index, step in enumerate(plan, 1):
         st.markdown(
             f'<div class="evidence"><div class="evidence-tag">#{index:02d}</div>'
-            f'<div class="evidence-text">{esc(step)}</div></div>',
+            f'<div class="evidence-text">{esc(named(step))}</div></div>',
             unsafe_allow_html=True,
         )
 
@@ -543,6 +590,51 @@ def tracker(stage):
         for i, (_, label) in enumerate(steps)
     )
     st.markdown(f'<div class="tracker">{pips}</div>', unsafe_allow_html=True)
+
+
+def press_start():
+    """PRESS START: save the two names and go to the case form."""
+    a = st.session_state.get("in_name_a", "").strip()
+    b = st.session_state.get("in_name_b", "").strip()
+    if not a or not b:
+        st.session_state.menu_error = "Both players need a name to enter the court."
+    elif a.lower() == b.lower():
+        st.session_state.menu_error = "The two players need different names."
+    else:
+        st.session_state.name_a, st.session_state.name_b = a, b
+        st.session_state.names_set = True
+        st.session_state.flash = "ORDER!"
+
+
+def go_to_menu():
+    """Back to the title screen, with the current names filled in."""
+    st.session_state.names_set = False
+    st.session_state.in_name_a = st.session_state.get("name_a", "")
+    st.session_state.in_name_b = st.session_state.get("name_b", "")
+
+
+def title_screen():
+    """The game's title menu: logo over a big pixel judge, then the players' names."""
+    st.markdown(
+        f'<div class="title-screen">{sprite_tag("judge", scale=20, cls="title-sprite")}'
+        '<div class="title-text"><div class="title-kicker">★ THE PEOPLE\'S COURT PRESENTS ★</div>'
+        '<div class="title-name">COURT<br>OF AI</div>'
+        '<div class="title-sub">A RETRO COURTROOM GAME</div></div>'
+        '<div class="title-press">▼ ENTER THE PLAYERS ▼</div></div>',
+        unsafe_allow_html=True,
+    )
+    if st.session_state.get("menu_error"):
+        st.error(st.session_state.pop("menu_error"))
+    a_col, b_col = st.columns(2)  # B on the left with the Defense, A on the right with the Prosecution
+    with b_col:
+        st.text_input("🟦 Player B name (defended by Rory Finch)", key="in_name_b", max_chars=16,
+                    placeholder="e.g. Jordan")
+    with a_col:
+        st.text_input("🟪 Player A name (represented by Ada Quill)", key="in_name_a", max_chars=16,
+                    placeholder="e.g. Sam")
+    st.button("▶ PRESS START", key="press_start", use_container_width=True, on_click=press_start)
+    st.markdown('<p class="small-note">Player A brings the complaint. Player B responds to it.</p>',
+                unsafe_allow_html=True)
 
 
 LOADING_TIPS = [
@@ -609,6 +701,7 @@ def init_state():
         "in_title": "", "in_claim_a": "", "in_claim_b": "",
         "flash": None, "loading_mode": "new", "verdict_recorded": False, "rewards": ([], []),
         "theme": progress.get("theme", "classic"), "outfit": progress.get("outfit", "classic"),
+        "names_set": False, "name_a": "", "name_b": "",
     }
     for key, value in defaults.items():
         if key not in st.session_state:
@@ -627,11 +720,15 @@ def reset_trial():
     st.session_state.in_claim_b = ""
 
 
-def make_trial(a, b, demo):
+def make_trial(a, b, demo, previous_resolution=None, appeal_feedback=""):
     if demo:
         return demo_trial(a, b)
     if not BACKEND_AVAILABLE:
         raise RuntimeError("The court_ai.py backend could not be imported. Add court_ai.py to this folder or turn on Demo Mode.")
+    # Only pass the appeal info if this court_ai.py knows about it (older versions take just a and b).
+    params = inspect.signature(generate_trial).parameters
+    if previous_resolution and "previous_resolution" in params and "appeal_feedback" in params:
+        return generate_trial(a, b, previous_resolution=previous_resolution, appeal_feedback=appeal_feedback)
     return generate_trial(a, b)
 
 
@@ -671,9 +768,9 @@ def start_trial():
     b = st.session_state.in_claim_b.strip()
     if not a or not b:
         if not a:
-            st.error("Person A's statement is required.")
+            st.error(f"{st.session_state.name_a}'s statement is required.")
         if not b:
-            st.error("Person B's statement is required.")
+            st.error(f"{st.session_state.name_b}'s statement is required.")
         return
     # Remember settings now: these widgets disappear once the trial starts.
     st.session_state.demo_mode = st.session_state.get("use_demo", not BACKEND_AVAILABLE)
@@ -690,6 +787,8 @@ def start_trial():
 
 
 def retry_resolution():
+    """Request revised ruling: remember why it was rejected, then show the loading screen."""
+    st.session_state.appeal_text = st.session_state.get("appeal_feedback", "").strip()
     st.session_state.round += 1
     st.session_state.loading_mode = "retry"
     st.session_state.stage = "LOADING"
@@ -702,7 +801,10 @@ def generate_case():
     try:
         if st.session_state.demo_mode:
             time.sleep(1.5)  # demo mode is instant; pause so the loading screen is visible
-        trial = validate_trial(make_trial(case["person_a"], case["person_b"], st.session_state.demo_mode))
+        previous = st.session_state.trial["resolution"] if retry else None
+        appeal = st.session_state.get("appeal_text", "") if retry else ""
+        trial = validate_trial(make_trial(case["person_a"], case["person_b"], st.session_state.demo_mode,
+                                          previous_resolution=previous, appeal_feedback=appeal))
     except Exception as exc:
         if retry:
             st.session_state.round -= 1
@@ -743,53 +845,10 @@ def choose(side, value):
     st.session_state.flash = "SUSTAINED!" if value == "accept" else "OVERRULED!"
 
 
-def retry_resolution():
-    a, b = st.session_state.case["person_a"], st.session_state.case["person_b"]
-    previous = st.session_state.trial["resolution"]
-    feedback = st.session_state.get("appeal_feedback", "").strip()
-    try:
-        if st.session_state.demo_mode:
-            updated = validate_trial(demo_trial(a, b))
-        else:
-            updated = validate_trial(generate_trial(a, b, previous_resolution=previous, appeal_feedback=feedback))
-    except Exception as exc:
-        st.error(f"The court could not prepare another resolution: {exc}")
-        return
-    st.session_state.round += 1
-    st.session_state.trial["resolution"] = updated["resolution"]
-    st.session_state.trial["action_plan"] = updated["action_plan"]
-    st.session_state.choices = {"a": None, "b": None}
-    st.session_state.stage = "RESOLUTION"
-
-l["resolution"]
-    feedback = st.session_state.get("appeal_feedback", "").strip()
-    try:
-        if st.session_state.demo_mode:
-            updated = validate_trial(demo_trial(a, b))
-        else:
-            updated = validate_trial(generate_trial(a, b, previous_resolution=previous, appeal_feedback=feedback))
-    except Exception as exc:
-        st.error(f"The court could not prepare another resolution: {exc}")
-        return
-    st.session_state.round += 1
-    st.session_state.trial["resolution"] = updated["resolution"]
-    st.session_state.trial["action_plan"] = updated["action_plan"]
-    st.session_state.choices = {"a": None, "b": None}
-    st.session_state.stage = "RESOLUTION"
-
->>>>>>> a758564859ee01b4b240fb49753caf7d34ae8ccb
-
 # =====================================================================
 #  SCREENS
 # =====================================================================
 init_state()
-
-st.markdown(
-    '<div class="hero"><div class="hero-kicker">★ THE PEOPLE\'S COURT · EST. 2026 ★</div>'
-    '<div class="hero-title">COURT OF AI</div>'
-    '<div class="hero-sub">Your side of the story is now in session.</div></div>',
-    unsafe_allow_html=True,
-)
 
 # ---- music toggle (top right) ----
 _, music_col = st.columns([3, 1])
@@ -800,6 +859,20 @@ settled_now = (st.session_state.stage == "VERDICT"
 if st.session_state.get("music"):
     play_music("settled.wav" if settled_now else "trial.wav")
 
+# ---- title menu: shown until both players enter their names ----
+if not st.session_state.names_set:
+    title_screen()
+    st.stop()
+
+st.markdown(
+    '<div class="hero"><div class="hero-kicker">★ THE PEOPLE\'S COURT · EST. 2026 ★</div>'
+    '<div class="hero-title">COURT OF AI</div>'
+    '<div class="hero-sub">Your side of the story is now in session.</div></div>',
+    unsafe_allow_html=True,
+)
+NAME_A, NAME_B = st.session_state.name_a, st.session_state.name_b
+st.markdown(f'<div class ="versus">🟪 {esc(NAME_A).upper()} &nbsp;VS&nbsp; {esc(NAME_B).upper()} 🟦</div>',
+            unsafe_allow_html=True)
 # ---- interjection banner (plays once) ----
 if st.session_state.flash:
     interjection(st.session_state.flash)
@@ -836,14 +909,14 @@ if st.session_state.case is None:
              "and issue an action plan.")
 
     st.text_input("Case title (optional)", key="in_title", placeholder="e.g. The Case of the Stolen Snacks")
-    left, right = st.columns(2)
+    right, left = st.columns(2)
     with left:
-        st.markdown("### 🟦 PERSON B")
-        st.text_area("What happened from Person B's perspective? (represented by the Defense)", key="in_claim_b",
+        st.markdown(f"### 🟦 {esc(NAME_B).upper()}")
+        st.text_area(f"What happened from {NAME_B}'s perspective? (represented by the Defense)", key="in_claim_b",
                      height=160, placeholder="Explain your side of the story...")
     with right:
-        st.markdown("### 🟪 PERSON A")
-        st.text_area("What happened from Person A's perspective? (represented by the Prosecution)", key="in_claim_a",
+        st.markdown(f"### 🟪 {esc(NAME_A).upper()}")
+        st.text_area(f"What happened from {NAME_A}'s perspective? (represented by the Prosecution)", key="in_claim_a",
                      height=160, placeholder="Explain what happened and why you're upset...")
     st.checkbox("Use Demo Mode (no Ollama required)", key="use_demo", value=not BACKEND_AVAILABLE)
     c1, c2 = st.columns(2)
@@ -854,6 +927,7 @@ if st.session_state.case is None:
     with c2:
         st.button("⚖ Start Trial", key="start", use_container_width=True, on_click=start_trial)
     trophy_case(progress)
+    st.button("↩ Change players (title menu)", key="to_menu", on_click=go_to_menu)
     st.markdown('<p class="small-note">COURT NOTICE: The AI mediator is not a real judge. '
                 'Keep statements respectful and avoid sharing private information.</p>', unsafe_allow_html=True)
 
@@ -874,17 +948,17 @@ else:
 
     if stage_name == "PROSECUTION":
         courtroom(active=["pros"], moods={"pros": mood("prosecutor_mood")})
-        dialogue("pros", trial["prosecutor"])
+        dialogue("pros", named(trial["prosecutor"]))
         st.button("Hear the defense ▶", key="next", on_click=advance, use_container_width=True)
 
     elif stage_name == "DEFENSE":
         courtroom(active=["def"], moods={"def": mood("defense_mood"), "pros": mood("prosecutor_mood")})
-        dialogue("def", trial["defense"])
+        dialogue("def", named(trial["defense"]))
         st.button("Approach the bench ▶", key="next", on_click=advance, use_container_width=True)
 
     elif stage_name == "RESOLUTION":
         courtroom(active=["judge"], moods={"judge": mood("judge_mood")})
-        dialogue("judge", trial["resolution"])
+        dialogue("judge", named(trial["resolution"]))
         plan = trial.get("action_plan", [])
         if plan:
             st.markdown('<div class="section-label">📜 COURT-ORDERED ACTION PLAN</div>', unsafe_allow_html=True)
@@ -898,7 +972,7 @@ else:
         dialogue("judge", "Both parties must now decide: do you accept the proposed resolution? "
                  "The verdict will be revealed once both have answered.")
         b_col, a_col = st.columns(2)  # Person B on the left with the Defense, A on the right
-        for col, side, label in ((b_col, "b", "🟦 PERSON B"), (a_col, "a", "🟪 PERSON A")):
+        for col, side, label in ((b_col, "b", f"🟦 {esc(NAME_B).upper()}"), (a_col, "a", f"🟪 {esc(NAME_A).upper()}")):
             with col:
                 st.markdown(f"### {label}")
                 locked_in = st.session_state.choices[side] is not None
@@ -933,7 +1007,6 @@ else:
             reward_cards(*st.session_state.rewards)
             st.markdown('<div class="section-label">📜 FINAL ACTION PLAN</div>', unsafe_allow_html=True)
             evidence_cards(trial.get("action_plan", []))
-        
         else:
             courtroom(active=["judge"], moods={"judge": "nervous", "pros": "nervous", "def": "nervous"})
             if st.session_state.round < MAX_ROUNDS:
@@ -950,3 +1023,22 @@ else:
                 st.text_area("Why was the ruling rejected? (optional)", key="appeal_feedback",
                              placeholder="Explain what the judge got wrong...", height=110)
                 st.button("Request revised ruling", key="retry", on_click=retry_resolution,
+                          use_container_width=True)
+            else:
+                st.warning("The court has reached its maximum number of resolution attempts.")
+        st.button("Start a new trial", key="reset_verdict", on_click=reset_trial, use_container_width=True)
+
+    with st.expander("📁 View submitted statements", expanded=False):
+        b_col, a_col = st.columns(2)
+        with b_col:
+            st.markdown(f"**{esc(NAME_B).upper()}**")
+            st.write(case["person_b"])
+        with a_col:
+            st.markdown(f"**{esc(NAME_A).upper()}**")
+            st.write(case["person_a"])
+
+    st.divider()
+    if stage_name != "VERDICT":
+        st.button("↺ Abandon case / New trial", key="reset_sidebar", on_click=reset_trial)
+    st.markdown('<p class="small-note">COURT OF AI · A fictional mediation experience, not legal advice.</p>',
+                unsafe_allow_html=True)

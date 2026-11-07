@@ -6,7 +6,21 @@ OLLAMA_URL = "http://localhost:11434/api/generate"
 MODEL = "qwen2.5:7b"
 
 
-def generate_trial(person_a, person_b):
+def generate_trial(person_a, person_b, previous_resolution=None, appeal_feedback=""):
+    # When a ruling was rejected, tell the judge what to fix.
+    appeal_section = ""
+    if previous_resolution:
+        appeal_section = f"""
+APPEAL:
+The parties REJECTED this earlier ruling:
+{previous_resolution}
+
+Reason given for rejecting it:
+{appeal_feedback or "No reason was given."}
+
+Write a NEW resolution and action plan that fixes these problems.
+Do not repeat the rejected ruling. Keep the same facts.
+"""
     
     prompt = f"""
 You are Judge AI-9, an entertaining but practical
@@ -20,7 +34,7 @@ PERSON B'S STATEMENT:
 
 Your task is to generate a short courtroom proceeding
 and a useful proposed agreement.
-
+{appeal_section}
 REASONING RULES:
 1. Identify the specific problem Person A describes.
 2. Consider Person B's explanation without automatically
