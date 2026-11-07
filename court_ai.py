@@ -1,13 +1,16 @@
-
 import json
 import requests
 
 OLLAMA_URL = "http://localhost:11434/api/generate"
-MODEL = "qwen2.5:3b"
+MODEL = "qwen2.5:7b"
 
 
-def generate_trial(person_a, person_b):
-    
+def generate_trial(
+    person_a,
+    person_b,
+    previous_resolution=None,
+    appeal_feedback=None
+):
     prompt = f"""
 You are Judge AI-9, an entertaining but practical
 mediator for everyday college student disputes.
@@ -37,6 +40,32 @@ REASONING RULES:
 9. Do not require Person A to supervise Person B.
 10. If the statements are insufficient to determine
     responsibility, propose a way to clarify the facts.
+
+FAIRNESS CHECK:
+Before generating the response, silently check:
+
+1. What is the exact problem that needs fixing?
+2. What responsibility does each person actually have?
+3. Does the resolution fix the current problem?
+4. Are the action steps consistent with the resolution?
+5. Did you invent any facts or obligations?
+
+For group projects:
+- Focus on the current assignment, if unfinished.
+- Do not invent reports, presentations, or deadlines.
+- Assign specific remaining work without assuming
+  what the assignment requires.
+
+For roommate disputes:
+- Respect ownership and personal boundaries.
+- Do not make the affected person responsible for
+  monitoring the other person's behavior.
+- Suggest replacement or reimbursement when appropriate.
+
+If the proposed resolution fails any of these checks,
+revise it before returning the JSON.
+
+Do not include the fairness check in the output.
 
 PROSECUTOR:
 - Present Person A's complaint accurately.
@@ -68,7 +97,6 @@ ACTION PLAN:
   schedules, or complicated tracking systems.
 - Do not invent new obligations unrelated to the dispute.
 
-
 OUTPUT RULES:
 Return ONLY one valid JSON object.
 
@@ -93,32 +121,51 @@ IMPORTANT:
 - Do not combine all steps into one paragraph.
 - Do not add extra keys.
 - Do not include markdown or explanations outside JSON.
-
 """
 
+    # Add context when someone requests a revised ruling.
+    if previous_resolution is not None:
+        prompt += f"""
 
-    
+APPEAL REQUEST:
+The parties rejected the following proposed resolution:
+
+{previous_resolution}
+
+REASON FOR REJECTION:
+{appeal_feedback or "No specific reason provided."}
+
+APPEAL INSTRUCTIONS:
+- Address the reason for rejection directly.
+- Generate a meaningfully different resolution.
+- Do not repeat the rejected solution.
+- Keep the original facts unchanged.
+- Do not invent new evidence or obligations.
+- Make sure the action plan matches the revised ruling.
+- Return the same JSON structure as before.
+"""
+
     required = ["prosecutor", "defense", "resolution"]
 
     for attempt in range(2):
-        response = requests.post(
-            OLLAMA_URL,
-            json={
-                "model": MODEL,
-                "prompt": prompt,
-                "format": "json",
-                "stream": False,
-                "options": {
-                    "temperature": 0.3
-                }
-            },
-            timeout=120
-        )
-
-        response.raise_for_status()
-        data = response.json()
-
         try:
+            response = requests.post(
+                OLLAMA_URL,
+                json={
+                    "model": MODEL,
+                    "prompt": prompt,
+                    "format": "json",
+                    "stream": False,
+                    "options": {
+                        "temperature": 0.3
+                    }
+                },
+                timeout=120
+            )
+
+            response.raise_for_status()
+            data = response.json()
+
             trial = json.loads(data["response"])
 
             if not isinstance(trial, dict):
@@ -130,10 +177,11 @@ IMPORTANT:
                     or not isinstance(trial[key], str)
                     or not trial[key].strip()
                 ):
-                    raise ValueError(f"Missing or invalid {key}")
+                    raise ValueError(
+                        f"Missing or invalid {key}"
+                    )
 
             plan = trial.get("action_plan")
-            print("DEBUG ACTION PLAN:", repr(plan))
 
             if (
                 not isinstance(plan, list)
@@ -147,7 +195,12 @@ IMPORTANT:
 
             return trial
 
-        except (ValueError, KeyError, TypeError) as error:
+        except (
+            ValueError,
+            KeyError,
+            TypeError,
+            requests.RequestException
+        ) as error:
             print(f"Attempt {attempt + 1} failed: {error}")
 
     raise ValueError(
