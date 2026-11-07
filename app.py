@@ -59,7 +59,7 @@ h3 {font-size: .9rem !important; line-height: 1.6 !important;}
   --wall1: #f6efe0; --wall2: #ebdfc6; --wain1: #b07a46; --wain2: #c99360; --trim: #7a4a24; --base: #8a5a2e;
   --tile1: #f7eedb; --tile2: #d8c19a; --floor-bg: #e9dcc0;
   --runner1: #b23a3a; --runner2: #a33333; --runner-edge: #e2b04a;
-  position: relative; height: 470px; overflow: hidden; margin: .2rem 0 0;
+  position: relative; height: 560px; overflow: hidden; margin: .2rem 0 0;
   border: 4px solid var(--dark); box-shadow: 8px 8px 0 var(--dark);
   background:
     linear-gradient(var(--base), var(--base)) 0 312px / 100% 8px no-repeat,
@@ -70,7 +70,7 @@ h3 {font-size: .9rem !important; line-height: 1.6 !important;}
     var(--floor-bg);
 }
 .floor {
-  position: absolute; left: -40%; right: -40%; bottom: -10px; height: 470px;
+  position: absolute; left: -40%; right: -40%; bottom: -10px; height: 560px;
   transform: perspective(380px) rotateX(58deg); transform-origin: 50% 100%;
   background: repeating-conic-gradient(var(--tile1) 0 25%, var(--tile2) 0 50%) 0 0 / 120px 120px;
   box-shadow: inset 0 60px 40px -20px rgba(90,60,30,.25);
@@ -106,26 +106,64 @@ h3 {font-size: .9rem !important; line-height: 1.6 !important;}
     linear-gradient(#8a5329, #8a5329) 0 0 / 100% 10px no-repeat,
     repeating-linear-gradient(90deg, transparent 0 24px, #a8693a 24px 34px, #8a5329 34px 36px, transparent 36px 48px) 0 10px / 100% 30px no-repeat;
 }
-/* stations: each character's spot in the room */
-.station {position: absolute; top: 0; bottom: 0; width: 220px; transform: translateX(-50%);}
+/* ---------- the room's layout, back to front ----------
+   back:   judge's bench (center) + an empty witness stand on each side + the jury box (right)
+   front:  two counsel tables closest to you: Person A on the left, Person B on the right */
+.station {position: absolute; top: 0; bottom: 0; width: 240px; transform: translateX(-50%);}
 .station.dim {filter: brightness(.72) saturate(.55);}
-.station .who {position: absolute; left: 50%; transform: translateX(-50%); image-rendering: pixelated;}
-.station.active .who {animation: talk .8s steps(2) infinite;}
+.station .who {position: absolute; left: 50%; transform: translateX(-50%); image-rendering: pixelated; z-index: 1;}
 @keyframes talk {50% {transform: translate(-50%, -4px);}}
-.station.active::before {content: ""; position: absolute; left: 50%; bottom: 10px; width: 260px; height: 60px; transform: translateX(-50%); background: radial-gradient(ellipse at center, rgba(255,240,170,.75), transparent 70%);}
-.podium {position: absolute; left: 50%; bottom: 40px; width: 190px; height: 124px; transform: translateX(-50%); background: linear-gradient(180deg, #c98d55 0 14px, #9a6232 14px 20px, #b87a44 20px 100%); border: 4px solid var(--dark); box-shadow: inset 10px 0 0 rgba(255,255,255,.08), inset -10px 0 0 rgba(0,0,0,.12);}
-.podium::after {content: ""; position: absolute; left: 14px; right: 14px; top: 30px; bottom: 14px; border: 4px solid #9a6232;}
+/* spotlight: a cone of light from the ceiling onto whoever is speaking */
+.station.active::before {
+  content: ""; position: absolute; left: 50%; top: 30px; bottom: 0; width: 300px; transform: translateX(-50%); z-index: 0;
+  background: linear-gradient(180deg, rgba(255,244,190,.65), rgba(255,236,160,.18) 85%, rgba(255,236,160,0));
+  clip-path: polygon(42% 0, 58% 0, 100% 100%, 0 100%); pointer-events: none;
+}
+.station.active::after {content: ""; position: absolute; left: 50%; bottom: 4px; width: 280px; height: 50px; transform: translateX(-50%);
+  background: radial-gradient(ellipse at center, rgba(255,240,170,.8), transparent 70%); pointer-events: none;}
 .plate {position: absolute; left: 50%; transform: translateX(-50%); z-index: 2; white-space: nowrap; text-align: center; padding: .35rem .55rem; background: #f2d48a; color: var(--dark); border: 3px solid var(--dark); font: .45rem/1.7 'Press Start 2P', monospace;}
 .station.active .plate {background: #ffe7a3; box-shadow: 0 0 0 3px #fff3c4, 0 0 14px 4px rgba(255,214,102,.9);}
-.podium .plate {top: 46px;}
-.chair {position: absolute; left: 50%; bottom: 218px; width: 184px; height: 228px; transform: translateX(-50%); background: linear-gradient(90deg, #6e2626 0 12px, #8e3434 12px 172px, #6e2626 172px); border: 4px solid var(--dark); border-radius: 46px 46px 0 0; box-shadow: inset 0 0 0 6px #b8862e;}
-.bench {position: absolute; left: 50%; bottom: 122px; width: 40%; min-width: 330px; height: 168px; transform: translateX(-50%); z-index: 1; background: linear-gradient(180deg, #d39a5f 0 16px, #9a6232 16px 24px, #bf8148 24px 100%); border: 4px solid var(--dark);}
-.bench::before {content: ""; position: absolute; left: 18px; right: 18px; top: 38px; bottom: 16px; border: 4px solid #9a6232; box-shadow: inset 0 0 0 4px #c98d55;}
-.seal {position: absolute; left: 50%; top: 52px; width: 64px; height: 64px; transform: translateX(-50%); display: flex; align-items: center; justify-content: center; font-size: 2rem; z-index: 1; background: #f2c14e; border: 4px solid var(--dark); border-radius: 50%; box-shadow: inset 0 0 0 5px #c98a2e;}
-.bench .plate {top: auto; bottom: 18px;}
-.dais {position: absolute; left: 50%; bottom: 96px; width: 50%; min-width: 400px; height: 30px; transform: translateX(-50%); z-index: 1; background: linear-gradient(180deg, #d9a96f 0 12px, #a8743f 12px 15px, #c99360 15px 100%); border: 4px solid var(--dark);}
-.judge-station .who {bottom: 268px;}
-.lawyer-station .who {bottom: 126px;}
+/* judge: tall chair + raised bench + dais */
+.judge-station {z-index: 3;}
+.judge-station .who {bottom: 312px;}
+.station.judge-station.active .who {animation: talk .8s steps(2) infinite;}
+.chair {position: absolute; left: 50%; bottom: 290px; width: 176px; height: 200px; transform: translateX(-50%); background: linear-gradient(90deg, #6e2626 0 12px, #8e3434 12px 164px, #6e2626 164px); border: 4px solid var(--dark); border-radius: 46px 46px 0 0; box-shadow: inset 0 0 0 6px #b8862e;}
+.bench {position: absolute; left: 50%; bottom: 210px; width: 34%; min-width: 300px; height: 140px; transform: translateX(-50%); z-index: 4; background: linear-gradient(180deg, #d39a5f 0 14px, #9a6232 14px 22px, #bf8148 22px 100%); border: 4px solid var(--dark);}
+.bench::before {content: ""; position: absolute; left: 16px; right: 16px; top: 34px; bottom: 14px; border: 4px solid #9a6232; box-shadow: inset 0 0 0 4px #c98d55;}
+.seal {position: absolute; left: 50%; top: 42px; width: 56px; height: 56px; transform: translateX(-50%); display: flex; align-items: center; justify-content: center; font-size: 1.7rem; z-index: 1; background: #f2c14e; border: 4px solid var(--dark); border-radius: 50%; box-shadow: inset 0 0 0 5px #c98a2e;}
+.bench .plate {top: auto; bottom: 10px;}
+.dais {position: absolute; left: 50%; bottom: 190px; width: 44%; min-width: 380px; height: 24px; transform: translateX(-50%); z-index: 4; background: linear-gradient(180deg, #d9a96f 0 10px, #a8743f 10px 13px, #c99360 13px 100%); border: 4px solid var(--dark);}
+/* empty witness stands beside the bench */
+.witness {position: absolute; bottom: 214px; width: 92px; height: 96px; transform: translateX(-50%); z-index: 2;}
+.witness .w-rail {position: absolute; left: 0; right: 0; top: 0; height: 10px; background: #9a6232; border: 3px solid var(--dark);}
+.witness .w-posts {position: absolute; left: 6px; right: 6px; top: 10px; height: 26px;
+  background: repeating-linear-gradient(90deg, #a8693a 0 8px, transparent 8px 18px);}
+.witness .w-box {position: absolute; left: 0; right: 0; bottom: 0; height: 60px; background: linear-gradient(180deg, #c98d55 0 8px, #b87a44 8px); border: 4px solid var(--dark);}
+.witness .w-box::after {content: ""; position: absolute; left: 10px; right: 10px; top: 14px; bottom: 10px; border: 3px solid #9a6232;}
+.witness .w-mic {position: absolute; right: 16px; top: -22px; width: 4px; height: 24px; background: var(--dark);}
+.witness .w-mic::before {content: ""; position: absolute; left: -4px; top: -10px; width: 12px; height: 12px; background: #3a3a48; border: 2px solid var(--dark); border-radius: 50%;}
+.witness .plate {top: 50px; font-size: .38rem; z-index: 3;}
+/* jury box with ever-bobbing pixel jurors */
+.jury {position: absolute; right: 1%; bottom: 196px; width: 206px; height: 170px; z-index: 2;}
+.juror {position: absolute; image-rendering: pixelated; animation: juror-bob 1.1s steps(2) infinite;}
+@keyframes juror-bob {0%, 100% {transform: translateY(0);} 50% {transform: translateY(-5px);}}
+.jury .j-back {position: absolute; left: 0; right: 0; bottom: 56px; height: 58px; background: linear-gradient(180deg, #b87a44 0 8px, #9a6232 8px); border: 4px solid var(--dark);}
+.jury .j-front {position: absolute; left: -6px; right: -6px; bottom: 0; height: 56px; z-index: 3; background: linear-gradient(180deg, #d39a5f 0 10px, #9a6232 10px 14px, #bf8148 14px); border: 4px solid var(--dark);}
+.jury .j-front::after {content: ""; position: absolute; left: 10px; right: 10px; top: 20px; bottom: 8px; border: 3px solid #9a6232;}
+.jury .plate {top: auto; bottom: 14px; z-index: 4;}
+/* counsel tables closest to you: the speaker stands up into the light */
+.table-station {z-index: 6;}
+.table-station .who {bottom: 10px;}
+.table-station.active .who {bottom: 84px; animation: stand-up .35s steps(4) both, talk .8s steps(2) .35s infinite;}
+@keyframes stand-up {from {bottom: 10px;} to {bottom: 84px;}}
+.counsel-table {position: absolute; left: 50%; bottom: 14px; width: 250px; height: 96px; transform: translateX(-50%); z-index: 2;
+  background: linear-gradient(180deg, #c98d55 0 16px, #8a5329 16px 22px, #a8693a 22px 100%); border: 4px solid var(--dark);
+  box-shadow: inset 12px 0 0 rgba(255,255,255,.07), inset -12px 0 0 rgba(0,0,0,.12);}
+.counsel-table::before, .counsel-table::after {content: ""; position: absolute; bottom: -14px; width: 14px; height: 14px; background: #6e4020; border: 3px solid var(--dark); border-top: none;}
+.counsel-table::before {left: 16px;} .counsel-table::after {right: 16px;}
+.counsel-table .papers {position: absolute; top: -8px; width: 36px; height: 10px; background: #fffaf0; border: 2px solid var(--dark);}
+.counsel-table .plate {top: 36px;}
+.counsel-table .plate b {display: block; font-size: .55rem; margin-bottom: .2rem;}
 /* ---------- unlockable courtroom themes ---------- */
 .court.dorm {--wall1: #efe6f7; --wall2: #e2d5f0; --wain1: #a58bc4; --wain2: #c1abdb; --trim: #6d5791; --base: #6d5791;
   --tile1: #8fc7c4; --tile2: #7fb9b6; --floor-bg: #8fc7c4; --runner1: #f2a3b8; --runner2: #e891a8; --runner-edge: #fff;}
@@ -255,9 +293,11 @@ div[data-testid="stAudio"] {position: absolute !important; width: 1px !important
 .small-note {color: #8a7356 !important; font: 1.1rem 'VT323', monospace !important;}
 hr {border-color: var(--line) !important;}
 @media (max-width: 760px) {
-  .court {height: 360px;}
-  .station {transform: translateX(-50%) scale(.7); transform-origin: bottom center;}
-  .bench, .dais {transform: translateX(-50%) scale(.75); transform-origin: bottom center;}
+  .court {height: 440px;}
+  .station {transform: translateX(-50%) scale(.62); transform-origin: bottom center;}
+  .bench, .dais {transform: translateX(-50%) scale(.7); transform-origin: bottom center;}
+  .jury {transform: scale(.7); transform-origin: bottom right;}
+  .witness {transform: translateX(-50%) scale(.7); transform-origin: bottom center;}
   .chair, .clock, .motto {display: none;}
 }
 </style>
@@ -380,6 +420,30 @@ SPRITES = {
 }
 
 
+# ---------- jurors: one small template, six different looks ----------
+JUROR_GRID = [
+    "..kkkkkk..",
+    ".khhhhhhk.",
+    "khhhhhhhhk",
+    "khsssssshk",
+    "ksessssesk",
+    "kssssssssk",
+    "ksssmmsssk",
+    ".kssssssk.",
+    "..kkkkkk..",
+    ".kcccccck.",
+    "kcccwwccck",
+    "kcccccccck",
+]
+JUROR_LOOKS = [  # (hair, skin, shirt)
+    ("#2b2238", "#f1c7a0", "#c8413f"), ("#d9772b", "#f6d2ae", "#2f6fca"), ("#8a8f99", "#e0b48c", "#3f8a3a"),
+    ("#f2d48a", "#f6d2ae", "#8a3fae"), ("#4a2e18", "#a8714a", "#e2b04a"), ("#1b1630", "#7a4a2e", "#2f9e98"),
+]
+for _i, (_hair, _skin, _shirt) in enumerate(JUROR_LOOKS):
+    SPRITES[f"juror{_i}"] = {"grid": JUROR_GRID, "palette": {
+        "k": "#05060c", "h": _hair, "s": _skin, "e": "#05060c", "m": "#7a3a2a", "c": _shirt, "w": "#f4f1e8"}}
+
+
 # ---------- facial expressions: small pixel edits on top of each face ----------
 #  (row, column, new pixel). "~" is a sweat drop, "x" is a red warning light.
 MOOD_EDITS = {
@@ -451,38 +515,60 @@ CAST = {
 
 
 def courtroom(active=(), moods=None):
-    """Draw the whole courtroom. `active` lists who is lit up; everyone else dims.
-    `moods` maps "pros"/"def"/"judge" to "normal", "confident" or "nervous"."""
+    """Draw the whole courtroom. `active` lists who is speaking (they light up and,
+    at the tables, stand up); everyone else dims. `moods` maps "pros"/"def"/"judge"
+    to "normal", "confident" or "nervous"."""
     active, moods = set(active), moods or {}
     theme = st.session_state.get("theme", "classic")
     outfit = st.session_state.get("outfit", "classic")
+    name_a = esc(st.session_state.get("name_a") or "Person A").upper()
+    name_b = esc(st.session_state.get("name_b") or "Person B").upper()
 
     def state(who):
         if not active:
             return ""
         return " active" if who in active else " dim"
 
-    def lawyer(who, left):
+    def counsel(who, left, player):
+        """A counsel table closest to the viewer, with that side's lawyer behind it."""
         c = CAST[who]
-        return (f'<div class="station lawyer-station{state(who)}" style="left:{left}">'
+        return (f'<div class="station table-station{state(who)}" style="left:{left}">'
                 f'{sprite_tag(c["sprite"], mood=moods.get(who, "normal"), outfit=outfit)}'
-                f'<div class="podium"><div class="plate">{c["role"]}<br>{c["name"]}</div></div></div>')
+                f'<div class="counsel-table"><div class="papers" style="left:30px"></div>'
+                f'<div class="papers" style="right:40px; width:28px"></div>'
+                f'<div class="plate"><b>{player}</b>{c["name"]} · {c["role"]}</div></div></div>')
+
+    def witness(left):
+        return (f'<div class="witness" style="left:{left}"><div class="w-rail"></div><div class="w-posts"></div>'
+                '<div class="w-box"></div><div class="w-mic"></div><div class="plate">WITNESS</div></div>')
+
+    # two rows of jurors (back row sits higher), each bobbing on its own beat
+    seats = [(18, 100), (82, 100), (146, 100), (-12, 46), (52, 46), (116, 46)]  # back row, then front row
+    jurors = "".join(
+        f'<div class="juror" style="left:{x + 6}px; bottom:{y}px; animation-delay:-{i * 0.37:.2f}s;'
+        f'{" z-index:2;" if y < 60 else ""}">{sprite_tag(f"juror{i}", scale=5, cls="j")}</div>'
+        for i, (x, y) in enumerate(seats))
+    jury = (f'<div class="jury"><div class="j-back"></div>{jurors}'
+            '<div class="j-front"><div class="plate">JURY</div></div></div>')
 
     j = CAST["judge"]
     room = (
         f'<div class="court {theme}"><div class="floor"><div class="runner"></div></div>'
         '<div class="ceiling"></div><div class="lamp" style="left:20%"></div><div class="lamp" style="left:80%"></div>'
         '<div class="shelves"></div>'
-        '<div class="pillar" style="left:27%"></div><div class="pillar" style="left:36%"></div>'
-        '<div class="pillar" style="left:64%"></div><div class="pillar" style="left:73%"></div>'
+        '<div class="pillar" style="left:22%"></div><div class="pillar" style="left:36%"></div>'
+        '<div class="pillar" style="left:64%"></div><div class="pillar" style="left:78%"></div>'
         '<div class="arch"></div><div class="clock"></div><div class="motto">BE FAIR<br>BE KIND</div>'
-        f'<div class="station judge-station{state("judge")}" style="left:50%; width:260px">'
-        f'<div class="chair"></div>{sprite_tag(j["sprite"], mood=moods.get("judge", "normal"))}</div>'
+        # back of the room: judge in the middle, empty witness stands either side, jury on the right
+        f'<div class="station judge-station{state("judge")}" style="left:50%; width:280px">'
+        f'<div class="chair"></div>{sprite_tag(j["sprite"], scale=8, mood=moods.get("judge", "normal"))}</div>'
         f'<div class="dais"></div><div class="bench"><div class="seal">⚖</div>'
         f'<div class="plate">{j["name"]}</div></div>'
-        + lawyer("pros", "87%")
-        + lawyer("def", "13%")
-        + '<div class="railing"></div></div>'
+        + witness("29%") + witness("71%") + jury
+        # front of the room, closest to you: Person A's table left, Person B's table right
+        + counsel("pros", "19%", "🟪 " + name_a)
+        + counsel("def", "81%", "🟦 " + name_b)
+        + '</div>'
     )
     st.markdown(room, unsafe_allow_html=True)
 
@@ -625,7 +711,7 @@ def title_screen():
     )
     if st.session_state.get("menu_error"):
         st.error(st.session_state.pop("menu_error"))
-    a_col, b_col = st.columns(2)  # B on the left with the Defense, A on the right with the Prosecution
+    a_col, b_col = st.columns(2)  # A on the left (Prosecution), B on the right (Defense)
     with b_col:
         st.text_input("🟦 Player B name (defended by Rory Finch)", key="in_name_b", max_chars=16,
                     placeholder="e.g. Jordan")
@@ -842,7 +928,8 @@ def advance():
 
 def choose(side, value):
     st.session_state.choices[side] = value
-    st.session_state.flash = "SUSTAINED!" if value == "accept" else "OVERRULED!"
+    if value == "decline":
+        st.session_state.flash = "OVERRULED!"
 
 
 # =====================================================================
@@ -971,8 +1058,8 @@ else:
                                                  "pros": reaction[st.session_state.choices["a"]]})
         dialogue("judge", "Both parties must now decide: do you accept the proposed resolution? "
                  "The verdict will be revealed once both have answered.")
-        b_col, a_col = st.columns(2)  # Person B on the left with the Defense, A on the right
-        for col, side, label in ((b_col, "b", f"🟦 {esc(NAME_B).upper()}"), (a_col, "a", f"🟪 {esc(NAME_A).upper()}")):
+        a_col, b_col = st.columns(2)  # Person A on the left, Person B on the right (same as their tables)
+        for col, side, label in ((a_col, "a", f"🟪 {esc(NAME_A).upper()}"), (b_col, "b", f"🟦 {esc(NAME_B).upper()}")):
             with col:
                 st.markdown(f"### {label}")
                 locked_in = st.session_state.choices[side] is not None
@@ -1029,7 +1116,7 @@ else:
         st.button("Start a new trial", key="reset_verdict", on_click=reset_trial, use_container_width=True)
 
     with st.expander("📁 View submitted statements", expanded=False):
-        b_col, a_col = st.columns(2)
+        a_col, b_col = st.columns(2)  # Person A on the left, Person B on the right
         with b_col:
             st.markdown(f"**{esc(NAME_B).upper()}**")
             st.write(case["person_b"])
