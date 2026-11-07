@@ -761,23 +761,6 @@ def retry_resolution():
     st.session_state.choices = {"a": None, "b": None}
     st.session_state.stage = "RESOLUTION"
 
-l["resolution"]
-    feedback = st.session_state.get("appeal_feedback", "").strip()
-    try:
-        if st.session_state.demo_mode:
-            updated = validate_trial(demo_trial(a, b))
-        else:
-            updated = validate_trial(generate_trial(a, b, previous_resolution=previous, appeal_feedback=feedback))
-    except Exception as exc:
-        st.error(f"The court could not prepare another resolution: {exc}")
-        return
-    st.session_state.round += 1
-    st.session_state.trial["resolution"] = updated["resolution"]
-    st.session_state.trial["action_plan"] = updated["action_plan"]
-    st.session_state.choices = {"a": None, "b": None}
-    st.session_state.stage = "RESOLUTION"
-
->>>>>>> a758564859ee01b4b240fb49753caf7d34ae8ccb
 
 # =====================================================================
 #  SCREENS
@@ -950,3 +933,6 @@ else:
                 st.text_area("Why was the ruling rejected? (optional)", key="appeal_feedback",
                              placeholder="Explain what the judge got wrong...", height=110)
                 st.button("Request revised ruling", key="retry", on_click=retry_resolution,
+                          use_container_width=True)
+
+        st.button("Start New Case", key="new_case", on_click=reset_trial, use_container_width=True)
