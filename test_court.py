@@ -1,5 +1,5 @@
 # Quick check that the AI backend works. Run with: python test_court.py
-from court_ai import generate_trial
+from court_ai_backup import generate_trial
 
 result = generate_trial(
     "My roommate keeps eating my groceries without asking.",
