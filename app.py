@@ -150,6 +150,15 @@ h3 {font-size: .9rem !important; line-height: 1.6 !important;}
 @keyframes tw-in {to {opacity: 1;}}
 .vn-next {position: absolute; right: 1rem; bottom: .5rem; color: #f2c14e; font-size: 1rem; opacity: 0; animation: tw-in .01s linear forwards, blink 1s steps(2) infinite;}
 @keyframes blink {50% {opacity: 0;}}
+/* ---------- investigation board ---------- */
+.caseboard {background:#fff8e8;border:4px solid var(--dark);box-shadow:6px 6px 0 var(--dark);padding:1rem;margin:.8rem 0 1.2rem;}
+.caseboard-title {font:.66rem/1.8 'Press Start 2P',monospace;color:var(--brown);margin-bottom:.7rem;}
+.caseboard-grid {display:grid;grid-template-columns:1fr 1fr;gap:.7rem;}
+.caseboard-item {background:#fffdf7;border:3px solid var(--line);padding:.8rem;min-width:0;}
+.caseboard-label {font:.5rem/1.7 'Press Start 2P',monospace;color:var(--brown);margin-bottom:.5rem;}
+.stApp .caseboard-copy {font:1.25rem/1.25 'VT323',monospace;color:var(--ink);overflow-wrap:anywhere;}
+.caseboard-warning {margin-top:.7rem;background:#f7e6b8;border:3px dashed var(--gold);padding:.65rem .8rem;font:1.15rem/1.25 'VT323',monospace;color:var(--ink);}
+@media(max-width:650px){.caseboard-grid{grid-template-columns:1fr;}}
 /* ---------- action-plan cards ---------- */
 .evidence {display: flex; gap: .9rem; align-items: flex-start; margin: .6rem 0; padding: .8rem 1rem; background: var(--cream); border: 4px solid var(--line); box-shadow: 5px 5px 0 var(--dark);}
 .evidence-tag {flex: none; padding: .45rem .5rem; background: var(--gold); color: #fff; font: .5rem 'Press Start 2P', monospace; border: 3px solid var(--dark);}
@@ -541,6 +550,25 @@ def play_music(track):
         st.audio(data, format="audio/wav", loop=True, autoplay=True)
     except TypeError:  # older Streamlit without loop/autoplay
         st.audio(data, format="audio/wav")
+
+
+def investigation_board(case):
+    """Show attributed testimony, not AI-invented evidence or verified facts."""
+    a = esc(st.session_state.get("name_a") or "Person A")
+    b = esc(st.session_state.get("name_b") or "Person B")
+    claim_a = esc(case.get("person_a", ""))
+    claim_b = esc(case.get("person_b", ""))
+    st.markdown(
+        '<div class="caseboard"><div class="caseboard-title">🔎 CASE INVESTIGATION BOARD</div>'
+        '<div class="caseboard-grid">'
+        f'<div class="caseboard-item"><div class="caseboard-label">EXHIBIT A · {a}</div>'
+        f'<div class="caseboard-copy">{claim_a}</div></div>'
+        f'<div class="caseboard-item"><div class="caseboard-label">EXHIBIT B · {b}</div>'
+        f'<div class="caseboard-copy">{claim_b}</div></div></div>'
+        '<div class="caseboard-warning">⚠ UNVERIFIED TESTIMONY: These are the parties’ accounts, '
+        'not independently verified evidence. The court must not invent missing facts.</div></div>',
+        unsafe_allow_html=True,
+    )
 
 
 def evidence_cards(plan):
@@ -945,6 +973,9 @@ else:
     st.markdown(f'<div class="case-strip">CASE FILE · {esc(case["title"].upper())} · '
                 f'ROUND {st.session_state.round}/{MAX_ROUNDS}</div>', unsafe_allow_html=True)
     tracker(stage_name)
+    if stage_name in ("PROSECUTION", "DEFENSE", "RESOLUTION"):
+        with st.expander("🔎 OPEN CASE INVESTIGATION BOARD", expanded=(stage_name == "PROSECUTION")):
+            investigation_board(case)
 
     if stage_name == "PROSECUTION":
         courtroom(active=["pros"], moods={"pros": mood("prosecutor_mood")})
