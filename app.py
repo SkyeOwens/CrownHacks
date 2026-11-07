@@ -1024,6 +1024,7 @@ else:
                              placeholder="Explain what the judge got wrong...", height=110)
                 st.button("Request revised ruling", key="retry", on_click=retry_resolution,
                           use_container_width=True)
+<<<<<<< HEAD
             else:
                 st.warning("The court has reached its maximum number of resolution attempts.")
         st.button("Start a new trial", key="reset_verdict", on_click=reset_trial, use_container_width=True)
@@ -1042,3 +1043,7 @@ else:
         st.button("↺ Abandon case / New trial", key="reset_sidebar", on_click=reset_trial)
     st.markdown('<p class="small-note">COURT OF AI · A fictional mediation experience, not legal advice.</p>',
                 unsafe_allow_html=True)
+=======
+
+        st.button("Start New Case", key="new_case", on_click=reset_trial, use_container_width=True)
+>>>>>>> fe9a8a1f34295e3e040c5ca4da7f5dc78de97085
