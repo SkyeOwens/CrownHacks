@@ -43,6 +43,7 @@ Return ONLY valid JSON with exactly these keys:
 "prosecutor_mood":"normal","defense_mood":"normal","judge_mood":"normal"}}
 The step owners shown above are EXAMPLES, not required assignments.
 Each mood is one of normal, confident, nervous.
+
 """
     if previous_resolution is not None:
         appeal = json.dumps({"previous_resolution": previous_resolution,
