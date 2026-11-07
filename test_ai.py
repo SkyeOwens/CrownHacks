@@ -1,4 +1,3 @@
-
 from court_ai import generate_trial
 
 cases = [

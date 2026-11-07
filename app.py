@@ -499,20 +499,22 @@ def choose(side, value):
 
 
 def retry_resolution():
-    st.session_state.round += 1
     a, b = st.session_state.case["person_a"], st.session_state.case["person_b"]
+    previous = st.session_state.trial["resolution"]
+    feedback = st.session_state.get("appeal_feedback", "").strip()
     try:
-        updated = validate_trial(make_trial(a, b, st.session_state.demo_mode))
-        st.session_state.trial["resolution"] = updated["resolution"] + f" (Resolution round {st.session_state.round}.)"
-        if updated.get("action_plan"):
-            st.session_state.trial["action_plan"] = updated["action_plan"]
+        if st.session_state.demo_mode:
+            updated = validate_trial(demo_trial(a, b))
+        else:
+            updated = validate_trial(generate_trial(a, b, previous_resolution=previous, appeal_feedback=feedback))
     except Exception as exc:
         st.error(f"The court could not prepare another resolution: {exc}")
-        st.session_state.round -= 1
         return
+    st.session_state.round += 1
+    st.session_state.trial["resolution"] = updated["resolution"]
+    st.session_state.trial["action_plan"] = updated["action_plan"]
     st.session_state.choices = {"a": None, "b": None}
     st.session_state.stage = "RESOLUTION"
-
 
 
 # =====================================================================
@@ -611,15 +613,16 @@ else:
             evidence_cards(trial.get("action_plan", []))
         else:
             if st.session_state.round < MAX_ROUNDS:
-                stage("judge", "The proposed resolution was not accepted by both parties. "
-                               "Very well, the court will attempt another resolution.")
+                stage("judge", "The proposed resolution was not accepted by both parties. The court will hear an appeal.")
             else:
                 stage("judge", "The proposed resolution was not accepted by both parties, "
                                "and this court has run out of attempts.")
             st.markdown('<div class="verdict fail"><div class="verdict-word">NO DEAL</div></div>',
                         unsafe_allow_html=True)
             if st.session_state.round < MAX_ROUNDS:
-                st.button("Request another resolution", key="retry", on_click=retry_resolution,
+                st.text_area("Why was the ruling rejected? (optional)", key="appeal_feedback",
+                             placeholder="Explain what the judge got wrong...", height=110)
+                st.button("Request revised ruling", key="retry", on_click=retry_resolution,
                           use_container_width=True)
             else:
                 st.warning("The court has reached its maximum number of resolution attempts.")
