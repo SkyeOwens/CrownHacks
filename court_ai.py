@@ -68,6 +68,11 @@ ACTION PLAN:
   schedules, or complicated tracking systems.
 - Do not invent new obligations unrelated to the dispute.
 
+MOODS (for the characters' facial expressions):
+- "prosecutor_mood", "defense_mood" and "judge_mood" must each be
+  exactly one of: "normal", "confident", "nervous".
+- A side with a strong argument is "confident"; a side whose
+  person clearly did something wrong is "nervous".
 
 OUTPUT RULES:
 Return ONLY one valid JSON object.
@@ -82,7 +87,10 @@ Follow this exact structure:
     "Person B: First concrete action.",
     "Person A: Second concrete action.",
     "Both: Third concrete action."
-  ]
+  ],
+  "prosecutor_mood": "normal",
+  "defense_mood": "normal",
+  "judge_mood": "normal"
 }}
 
 IMPORTANT:
@@ -144,6 +152,11 @@ IMPORTANT:
                 )
             ):
                 raise ValueError("Invalid action plan")
+
+            # Moods are optional: anything missing or unexpected becomes "normal".
+            for key in ("prosecutor_mood", "defense_mood", "judge_mood"):
+                if trial.get(key) not in ("normal", "confident", "nervous"):
+                    trial[key] = "normal"
 
             return trial
 
