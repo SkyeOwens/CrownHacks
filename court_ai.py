@@ -75,34 +75,61 @@ IMPORTANT RULES:
 - Do not assume both parties are equally responsible.
 """
 
-    response = requests.post(
-        OLLAMA_URL,
-        json={
-            "model": MODEL,
-            "prompt": prompt,
-            "format": "json",
-            "stream": False
-        },
-        timeout=120
-    )
-
-    response.raise_for_status()
-
-    data = response.json()
-    trial = json.loads(data["response"])
-
+    
     required = ["prosecutor", "defense", "resolution"]
 
-    for key in required:
-        if key not in trial or not isinstance(trial[key], str):
-            raise ValueError(f"Invalid AI response: missing {key}")
+    for attempt in range(2):
+        response = requests.post(
+            OLLAMA_URL,
+            json={
+                "model": MODEL,
+                "prompt": prompt,
+                "format": "json",
+                "stream": False,
+                "options": {
+                    "temperature": 0.3
+                }
+            },
+            timeout=120
+        )
 
-    if (
-        "action_plan" not in trial
-        or not isinstance(trial["action_plan"], list)
-        or len(trial["action_plan"]) != 3
-        or not all(isinstance(step, str) for step in trial["action_plan"])
-    ):
-        raise ValueError("Invalid AI response: action_plan must contain 3 steps")
+        response.raise_for_status()
+        data = response.json()
+
+        try:
+            trial = json.loads(data["response"])
+
+            if not isinstance(trial, dict):
+                raise ValueError("Response is not an object")
+
+            for key in required:
+                if (
+                    key not in trial
+                    or not isinstance(trial[key], str)
+                    or not trial[key].strip()
+                ):
+                    raise ValueError(f"Missing or invalid {key}")
+
+            plan = trial.get("action_plan")
+
+            if (
+                not isinstance(plan, list)
+                or len(plan) != 3
+                or not all(
+                    isinstance(step, str) and step.strip()
+                    for step in plan
+                )
+            ):
+                raise ValueError("Invalid action plan")
+
+            return trial
+
+        except (ValueError, KeyError, TypeError) as error:
+            print(f"Attempt {attempt + 1} failed: {error}")
+
+    raise ValueError(
+        "The AI could not generate a complete trial. "
+        "Please try again."
+    )
 
     return trial
