@@ -455,6 +455,29 @@ MOOD_EDITS = {
                              (7, 5, "a"), (7, 7, "a"), (7, 8, "a"), (7, 10, "a")],
     ("judge", "nervous"): [(7, 6, "x"), (7, 9, "x"), (1, 7, "x"), (1, 8, "x")],
 }
+
+# Jury facial expressions
+# All six jurors share the same 10-pixel-wide sprite grid.
+
+for i in range(6):
+    # Happy: smiling eyes and an upward-curving mouth
+    MOOD_EDITS[(f"juror{i}", "happy")] = [
+        (4, 2, "s"), (4, 3, "e"),
+        (4, 7, "e"), (4, 8, "s"),
+        (6, 4, "m"), (6, 5, "s"),
+        (6, 6, "s"), (6, 7, "m"),
+        (7, 5, "m"), (7, 6, "m")
+    ]
+
+    # Angry: lowered eyebrows and a frown
+    MOOD_EDITS[(f"juror{i}", "angry")] = [
+        (3, 2, "k"), (3, 3, "k"),
+        (3, 7, "k"), (3, 8, "k"),
+        (6, 4, "s"), (6, 5, "m"),
+        (6, 6, "m"), (6, 7, "s"),
+        (7, 4, "m"), (7, 7, "m")
+    ]
+
 MOOD_COLORS = {"~": "#7fc8ff", "x": "#ff5c5c"}
 
 # ---------- unlockable outfits: color swaps for the lawyers ----------
@@ -542,12 +565,35 @@ def courtroom(active=(), moods=None):
         return (f'<div class="witness" style="left:{left}"><div class="w-rail"></div><div class="w-posts"></div>'
                 '<div class="w-box"></div><div class="w-mic"></div><div class="plate">WITNESS</div></div>')
 
-    # two rows of jurors (back row sits higher), each bobbing on its own beat
-    seats = [(18, 100), (82, 100), (146, 100), (-12, 46), (52, 46), (116, 46)]  # back row, then front row
+    
+    # Six jurors with expressions based on their simulated votes
+    seats = [
+        (18, 100), (82, 100), (146, 100),
+        (-12, 46), (52, 46), (116, 46)
+    ]
+
+    # Neutral until the verdict; happy or angry after voting
+    jury_moods = ["normal"] * 6
+
+    if st.session_state.get("stage") == "VERDICT":
+        current_trial = st.session_state.get("trial") or {}
+        votes = jury_votes(
+            current_trial.get("resolution", ""),
+            current_trial.get("action_plan", [])
+        )
+        jury_moods = [
+            "happy" if vote else "angry"
+            for vote in votes
+        ]
+
     jurors = "".join(
-        f'<div class="juror" style="left:{x + 6}px; bottom:{y}px; animation-delay:-{i * 0.37:.2f}s;'
-        f'{" z-index:2;" if y < 60 else ""}">{sprite_tag(f"juror{i}", scale=5, cls="j")}</div>'
-        for i, (x, y) in enumerate(seats))
+        f'<div class="juror" style="left:{x + 6}px; bottom:{y}px; '
+        f'animation-delay:-{i * 0.37:.2f}s;'
+        f'{" z-index:2;" if y < 60 else ""}">'
+        f'{sprite_tag(f"juror{i}", scale=5, mood=jury_moods[i], cls="j")}'
+        f'</div>'
+        for i, (x, y) in enumerate(seats)
+    )
     jury = (f'<div class="jury"><div class="j-back"></div>{jurors}'
             '<div class="j-front"><div class="plate">JURY</div></div></div>')
 
@@ -841,6 +887,7 @@ def init_state():
 
 
 def reset_trial():
+    st.session_state.jury_revealed = False
     st.session_state.case = None
     st.session_state.stage = "SUBMIT"
     st.session_state.trial = None
@@ -1120,6 +1167,7 @@ else:
 
     
     elif stage_name == "VERDICT":
+        st.session_state.jury_revealed = True
         accepted = all(value == "accept" for value in st.session_state.choices.values())
 
         if st.session_state.get("stage_error"):
