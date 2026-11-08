@@ -301,6 +301,35 @@ hr {border-color: var(--line) !important;}
   .chair, .clock, .motto {display: none;}
 }
 
+/* Hide Streamlit's top toolbar */
+[data-testid="stHeader"] {
+    display: none !important;
+}
+
+/* Remove unnecessary space above the game */
+.block-container {
+    padding-top: 1rem !important;
+}
+
+/* Keep the app's controls visible */
+[data-testid="stAppViewContainer"] {
+    padding-top: 0 !important;
+}
+/* Hide the audio player while keeping the music element */
+.stApp [data-testid="stAudio"] {
+    position: absolute !important;
+    width: 1px !important;
+    height: 1px !important;
+    overflow: hidden !important;
+    opacity: 0 !important;
+    pointer-events: none !important;
+}
+
+/* Remove the player's layout space */
+.stApp [data-testid="stAudio"] audio {
+    width: 1px !important;
+    height: 1px !important;
+}
 </style>
 """, unsafe_allow_html=True)
 
