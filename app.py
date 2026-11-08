@@ -1,4 +1,6 @@
 import base64
+import datetime
+import hashlib
 import html
 import inspect
 import os
@@ -18,7 +20,10 @@ from court_logic import (MAX_ROUNDS, ACHIEVEMENTS, THEMES, OUTFITS,
                          load_progress, save_progress, unlocked, record_verdict)
 
 APP_DIR = os.path.dirname(os.path.abspath(__file__))
-MUSIC_DIR = os.path.join(APP_DIR, "assets")
+# The music folder may be named "assets" or "Assets". Windows doesn't care, but Linux
+# (where Streamlit Cloud runs) does, so use whichever one exists.
+MUSIC_DIR = next((os.path.join(APP_DIR, n) for n in ("assets", "Assets")
+                  if os.path.isdir(os.path.join(APP_DIR, n))), os.path.join(APP_DIR, "assets"))
 
 # =====================================================================
 #  STYLING
@@ -188,6 +193,16 @@ h3 {font-size: .9rem !important; line-height: 1.6 !important;}
 @keyframes tw-in {to {opacity: 1;}}
 .vn-next {position: absolute; right: 1rem; bottom: .5rem; color: #f2c14e; font-size: 1rem; opacity: 0; animation: tw-in .01s linear forwards, blink 1s steps(2) infinite;}
 @keyframes blink {50% {opacity: 0;}}
+/* ---------- investigation board ---------- */
+.caseboard {background:#fff8e8;border:4px solid var(--dark);box-shadow:6px 6px 0 var(--dark);padding:1rem;margin:.8rem 0 1.2rem;}
+.caseboard-title {font:.66rem/1.8 'Press Start 2P',monospace;color:var(--brown);margin-bottom:.7rem;}
+.caseboard-grid {display:grid;grid-template-columns:1fr 1fr;gap:.7rem;}
+.caseboard-item {background:#fffdf7;border:3px solid var(--line);padding:.8rem;min-width:0;}
+.caseboard-label {font:.5rem/1.7 'Press Start 2P',monospace;color:var(--brown);margin-bottom:.5rem;}
+.stApp .caseboard-copy {font:1.25rem/1.25 'VT323',monospace;color:var(--ink);overflow-wrap:anywhere;}
+.caseboard-warning {margin-top:.7rem;background:#f7e6b8;border:3px dashed var(--gold);padding:.65rem .8rem;font:1.15rem/1.25 'VT323',monospace;color:var(--ink);}
+@media(max-width:650px){.caseboard-grid{grid-template-columns:1fr;}}
+
 /* ---------- action-plan cards ---------- */
 .evidence {display: flex; gap: .9rem; align-items: flex-start; margin: .6rem 0; padding: .8rem 1rem; background: var(--cream); border: 4px solid var(--line); box-shadow: 5px 5px 0 var(--dark);}
 .evidence-tag {flex: none; padding: .45rem .5rem; background: var(--gold); color: #fff; font: .5rem 'Press Start 2P', monospace; border: 3px solid var(--dark);}
@@ -281,6 +296,34 @@ h3 {font-size: .9rem !important; line-height: 1.6 !important;}
 .trophy.locked {opacity: .45; filter: grayscale(1);}
 .trophy b {font: .5rem/1.8 'Press Start 2P', monospace; color: var(--brown);}
 .stApp .trophy span {font: 1.1rem 'VT323', monospace;}
+/* ---------- how to play (title screen) ---------- */
+.howto {margin: 1rem 0 .4rem; padding: 1rem 1.1rem; background: var(--cream); border: 4px solid var(--dark); box-shadow: 6px 6px 0 var(--dark);}
+.howto-title {font: .62rem 'Press Start 2P', monospace; color: var(--red); margin-bottom: .8rem;}
+.howto-steps {display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: .8rem;}
+.howto .step {display: flex; gap: .7rem; align-items: flex-start;}
+.howto .step b {flex: none; width: 2rem; height: 2rem; display: flex; align-items: center; justify-content: center;
+  font: .7rem 'Press Start 2P', monospace; color: #fff; background: var(--gold); border: 3px solid var(--dark);}
+.stApp .howto .step span {font: 1.25rem/1.15 'VT323', monospace; color: var(--ink);}
+/* ---------- official court order (shown when a case settles) ---------- */
+.order {position: relative; margin: 1.4rem 0 1rem; padding: 2rem 2.2rem 1.6rem; background: #fffdf5;
+  border: 4px solid var(--dark); outline: 6px double var(--gold); outline-offset: -14px; box-shadow: 8px 8px 0 var(--dark);
+  animation: stamp .45s steps(5) 1.5s both;}
+.order-court {text-align: center; font: .55rem 'Press Start 2P', monospace; color: var(--gold); letter-spacing: .2em;}
+.order-title {text-align: center; font: clamp(1rem, 3vw, 1.5rem) 'Press Start 2P', monospace; color: var(--dark); margin: .8rem 0 .4rem;}
+.order-meta {display: flex; justify-content: center; flex-wrap: wrap; gap: .3rem 1.4rem; font: 1.2rem 'VT323', monospace; color: #7a5a3a; margin-bottom: 1rem;}
+.stApp .order p, .stApp .order li {font: 1.35rem/1.25 'VT323', monospace; color: var(--ink);}
+.order .parties {text-align: center; margin: .2rem 0 1rem;}
+.order ol {margin: .4rem 0 1rem 1.4rem; padding: 0;}
+.order li {margin: .35rem 0;}
+.order .signatures {display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 1.2rem; margin-top: 1.4rem;}
+.order .sig {text-align: center;}
+.order .sig-name {font: italic 1.6rem 'VT323', monospace; color: #2f3e8a; border-bottom: 3px solid var(--dark); padding-bottom: .1rem;}
+.order .sig-role {font: .42rem/2 'Press Start 2P', monospace; color: #7a5a3a;}
+.order .seal-stamp {position: absolute; right: 1.6rem; top: 1.4rem; width: 86px; height: 86px; border-radius: 50%;
+  display: flex; align-items: center; justify-content: center; text-align: center; transform: rotate(-12deg);
+  font: .45rem/1.6 'Press Start 2P', monospace; color: var(--red); border: 4px double var(--red); background: rgba(200,65,63,.06);}
+.stApp .order .keep {text-align: center; font: 1.05rem 'VT323', monospace; color: #8a7356; margin: 1rem 0 0;}
+@media (max-width: 640px) {.order .seal-stamp {position: static; margin: 0 auto .6rem; transform: rotate(-8deg);}}
 /* ---------- widgets ---------- */
 .stButton>button {background: var(--red) !important; color: #fff !important; border: 4px solid var(--dark) !important; border-radius: 0 !important; box-shadow: inset -4px -4px 0 #8f2835, inset 4px 4px 0 #ff8a8f, 4px 4px 0 var(--dark) !important; min-height: 3rem; transition: none !important;}
 .stButton>button p {font-family: 'Press Start 2P', monospace !important; font-size: .62rem !important; line-height: 1.6 !important; color: #fff !important;}
@@ -600,7 +643,7 @@ def dialogue(who, text):
 
 def interjection(word):
     """Full-screen pixel banner that flashes across the screen, shakes the court, then disappears."""
-    kind = {"SUSTAINED!": "good", "OVERRULED!": "bad"}.get(word, "order")
+    kind = {"OVERRULED!": "bad"}.get(word, "order")
     st.markdown(f'<div class="interjection {kind}"><div class="ij-band"><div class="ij-word">{word}</div></div></div>',
                 unsafe_allow_html=True)
 
@@ -629,6 +672,25 @@ def play_music(track):
         st.audio(data, format="audio/wav")
 
 
+def investigation_board(case):
+    """Show attributed testimony, not AI-invented evidence or verified facts."""
+    a = esc(st.session_state.get("name_a") or "Person A")
+    b = esc(st.session_state.get("name_b") or "Person B")
+    claim_a = esc(case.get("person_a", ""))
+    claim_b = esc(case.get("person_b", ""))
+    st.markdown(
+        '<div class="caseboard"><div class="caseboard-title">🔎 CASE INVESTIGATION BOARD</div>'
+        '<div class="caseboard-grid">'
+        f'<div class="caseboard-item"><div class="caseboard-label">EXHIBIT A · {a}</div>'
+        f'<div class="caseboard-copy">{claim_a}</div></div>'
+        f'<div class="caseboard-item"><div class="caseboard-label">EXHIBIT B · {b}</div>'
+        f'<div class="caseboard-copy">{claim_b}</div></div></div>'
+        '<div class="caseboard-warning">⚠ UNVERIFIED TESTIMONY: These are the parties’ accounts, '
+        'not independently verified evidence. The court must not invent missing facts.</div></div>',
+        unsafe_allow_html=True,
+    )
+
+
 def evidence_cards(plan):
     for index, step in enumerate(plan, 1):
         st.markdown(
@@ -637,52 +699,31 @@ def evidence_cards(plan):
             unsafe_allow_html=True,
         )
 
-import hashlib
 
-def jury_votes(resolution, action_plan):
-    """Generate repeatable simulated jury votes for a case."""
-    content = str(resolution) + "|" + str(action_plan)
-    seed = hashlib.sha256(content.encode("utf-8")).digest()
-
-    # Four jurors approve, two dissent.
-    # Their positions vary by case, not randomly on reruns.
-    dissenters = {seed[0] % 6}
-    dissenters.add((seed[0] % 6 + 1 + seed[1] % 5) % 6)
-
-    return [i not in dissenters for i in range(6)]
-
-def show_jury_deliberation(resolution, action_plan):
-    votes = jury_votes(resolution, action_plan)
-    approved = sum(votes)
-
-    st.markdown("### ⚖️ JURY DELIBERATION")
-    st.caption("Six simulated jurors review the court's proposed resolution.")
-
-    columns = st.columns(6)
-
-    for i, (column, approved_vote) in enumerate(zip(columns, votes)):
-        with column:
-            st.markdown(f"**Juror {i + 1}**")
-            st.markdown("🟩 FAIR" if approved_vote else "🟥 DISAGREE")
-
+def court_order(case, plan):
+    """The official-looking Court Order shown when both players accept the ruling."""
+    name_a = esc(st.session_state.get("name_a") or "Person A")
+    name_b = esc(st.session_state.get("name_b") or "Person B")
+    today = datetime.date.today()
+    case_no = f'{today.year}-{int(hashlib.md5(case["title"].encode("utf-8")).hexdigest(), 16) % 10000:04d}'
+    steps = "".join(f"<li>{esc(named(step))}</li>" for step in plan) or "<li>The parties will follow the court's resolution.</li>"
     st.markdown(
-    f"""
-    <div style="
-        background-color: #173b2e;
-        color: #fff4d6;
-        padding: 18px;
-        border: 3px solid #c69c55;
-        font-weight: bold;
-        text-align: center;
-        font-size: 18px;
-        margin-top: 15px;
-        margin-bottom: 15px;
-    ">
-        ⚖️ JURY VERDICT: {approved}–{6 - approved} — MAJORITY APPROVES
-    </div>
-    """,
-    unsafe_allow_html=True
-)
+        f'<div class="order"><div class="seal-stamp">CASE<br>SETTLED</div>'
+        f'<div class="order-court">★ COURT OF AI ★</div>'
+        f'<div class="order-title">OFFICIAL COURT ORDER</div>'
+        f'<div class="order-meta"><span>Case No. {case_no}</span><span>{today.strftime("%B %d, %Y")}</span></div>'
+        f'<p class="parties">In the matter of <b>{esc(case["title"])}</b><br>'
+        f'🟪 {name_a.upper()} (Complainant) &nbsp;and&nbsp; 🟦 {name_b.upper()} (Respondent)</p>'
+        f'<p>Having heard both sides, this court ORDERS the following:</p><ol>{steps}</ol>'
+        f'<p>Both parties have reviewed and accepted these terms.</p>'
+        f'<div class="signatures">'
+        f'<div class="sig"><div class="sig-name">{name_a}</div><div class="sig-role">COMPLAINANT</div></div>'
+        f'<div class="sig"><div class="sig-name">{name_b}</div><div class="sig-role">RESPONDENT</div></div>'
+        f'<div class="sig"><div class="sig-name">Judge AI-9</div><div class="sig-role">THE COURT</div></div></div>'
+        f'<p class="keep">Screenshot this order to keep it.</p></div>',
+        unsafe_allow_html=True,
+    )
+
 
 def reward_cards(new_achievements, new_unlocks):
     for key in new_achievements:
@@ -765,6 +806,16 @@ def title_screen():
         st.text_input("🟪 Player A name (represented by Ada Quill)", key="in_name_a", max_chars=16,
                     placeholder="e.g. Sam")
     st.button("▶ PRESS START", key="press_start", use_container_width=True, on_click=press_start)
+    st.markdown(
+        '<div class="howto"><div class="howto-title">HOW TO PLAY</div><div class="howto-steps">'
+        '<div class="step"><b>1</b><span>Enter both players\' names and press START.</span></div>'
+        '<div class="step"><b>2</b><span>Each player tells their side. The lawyers argue it out, '
+        'then the judge proposes a fix.</span></div>'
+        '<div class="step"><b>3</b><span>Accept the ruling to settle the case, or decline and say why '
+        'to get a revised ruling.</span></div>'
+        '</div></div>',
+        unsafe_allow_html=True,
+    )
     st.markdown('<p class="small-note">Player A brings the complaint. Player B responds to it.</p>',
                 unsafe_allow_html=True)
 
@@ -805,11 +856,37 @@ SAMPLE_TITLE = "The Case of the Missing Dining Hall Fries"
 SAMPLE_A = "I bought fries and left them on the table for a minute. When I came back, they were gone."
 SAMPLE_B = "I thought they were leftovers from the group order. I should have asked first."
 
+# Ready-made cases for the "Load Sample Case" picker: (title, Person A's side, Person B's side)
+SAMPLE_CASES = [
+    (SAMPLE_TITLE, SAMPLE_A, SAMPLE_B),
+    ("The Thermostat War",
+     "My roommate keeps turning the thermostat down to 62 at night. I wake up freezing and I've asked them twice to stop.",
+     "Our room gets really stuffy and I can't sleep when it's warm. I didn't think 62 was that cold."),
+    ("The Case of the Borrowed Charger",
+     "My laptop charger went missing right before my exam. I found it in my roommate's backpack two days later.",
+     "I grabbed it by accident because our chargers look the same. I didn't realize it was theirs until they asked."),
+    ("The Dishes Standoff",
+     "There have been dirty dishes in the sink for a week and none of them are mine.",
+     "Some of them are mine, but I've been buried in midterms. I was going to wash them this weekend."),
+    ("The Group Project Ghost",
+     "My partner never did their slides for our presentation, so I stayed up until 3 AM finishing them myself.",
+     "I had a family emergency that week. I should have told them instead of going quiet."),
+    ("The 2 AM Video Call",
+     "My roommate takes loud video calls at 2 AM while I'm trying to sleep.",
+     "My partner lives in a different time zone and that's the only time we can talk."),
+]
+
+
+def load_sample():
+    """Fill the case form with whichever sample case is picked in the dropdown."""
+    title, a, b = SAMPLE_CASES[st.session_state.get("sample_pick", 0)]
+    st.session_state.update({"in_title": title, "in_claim_a": a, "in_claim_b": b})
+
 
 def demo_trial(person_a, person_b):
     return {
-        "prosecutor": f"Person A says: {person_a} The complaint is that their side of the story was not respected.",
-        "defense": f"Person B says: {person_b} That explanation matters, but asking first would have avoided the dispute.",
+        "prosecutor": person_a,
+        "defense": person_b,
         "resolution": "Person A deserves to have their belongings respected. Person B should acknowledge the mistake and make it right without turning a small disagreement into a bigger conflict.",
         "action_plan": [
             "Person B: Apologize directly to Person A for taking the fries without checking.",
@@ -974,7 +1051,8 @@ def advance():
 
 def choose(side, value):
     st.session_state.choices[side] = value
-    st.session_state.flash = "SUSTAINED!" if value == "accept" else "OVERRULED!"
+    if value == "decline":
+        st.session_state.flash = "OVERRULED!"
 
 
 # =====================================================================
@@ -1053,9 +1131,9 @@ if st.session_state.case is None:
     st.checkbox("Use Demo Mode (no Ollama required)", key="use_demo", value=not BACKEND_AVAILABLE)
     c1, c2 = st.columns(2)
     with c1:
-        st.button("Load Sample Case", key="load_sample", use_container_width=True,
-                  on_click=lambda: st.session_state.update({
-                      "in_title": SAMPLE_TITLE, "in_claim_a": SAMPLE_A, "in_claim_b": SAMPLE_B}))
+        st.selectbox("📂 Sample case", range(len(SAMPLE_CASES)), key="sample_pick",
+                     format_func=lambda i: SAMPLE_CASES[i][0])
+        st.button("Load Sample Case", key="load_sample", use_container_width=True, on_click=load_sample)
     with c2:
         st.button("⚖ Start Trial", key="start", use_container_width=True, on_click=start_trial)
     trophy_case(progress)
@@ -1077,15 +1155,18 @@ else:
     st.markdown(f'<div class="case-strip">CASE FILE · {esc(case["title"].upper())} · '
                 f'ROUND {st.session_state.round}/{MAX_ROUNDS}</div>', unsafe_allow_html=True)
     tracker(stage_name)
+    if stage_name in ("PROSECUTION", "DEFENSE", "RESOLUTION"):
+        with st.expander("🔎 OPEN CASE INVESTIGATION BOARD", expanded=True):
+            investigation_board(case)
 
     if stage_name == "PROSECUTION":
         courtroom(active=["pros"], moods={"pros": mood("prosecutor_mood")})
-        dialogue("pros", named(trial["prosecutor"]))
+        dialogue("pros", f"{st.session_state.name_a} states: {case['person_a']}")
         st.button("Hear the defense ▶", key="next", on_click=advance, use_container_width=True)
 
     elif stage_name == "DEFENSE":
         courtroom(active=["def"], moods={"def": mood("defense_mood"), "pros": mood("prosecutor_mood")})
-        dialogue("def", named(trial["defense"]))
+        dialogue("def", f"{st.session_state.name_b} states: {case['person_b']}")
         st.button("Approach the bench ▶", key="next", on_click=advance, use_container_width=True)
 
     elif stage_name == "RESOLUTION":
@@ -1118,119 +1199,56 @@ else:
             st.button("⚖ Reveal Verdict", key="see_verdict", use_container_width=True,
                       on_click=lambda: st.session_state.update({"stage": "VERDICT"}))
 
-    
     elif stage_name == "VERDICT":
         accepted = all(value == "accept" for value in st.session_state.choices.values())
-
         if st.session_state.get("stage_error"):
             st.error(st.session_state.pop("stage_error"))
 
-        # Save achievements once per verdict
+        # save achievements once per verdict
         if not st.session_state.verdict_recorded:
             progress = load_progress()
-            st.session_state.rewards = record_verdict(
-                progress,
-                case,
-                st.session_state.round,
-                accepted,
-                MAX_ROUNDS
-            )
+            st.session_state.rewards = record_verdict(progress, case, st.session_state.round, accepted, MAX_ROUNDS)
             save_progress(progress)
             st.session_state.verdict_recorded = True
 
         gavel_verdict()
-
         if accepted:
-            courtroom(
-                active=["judge"],
-                moods={
-                    "judge": "confident",
-                    "pros": "confident",
-                    "def": "confident"
-                }
-            )
-
-            dialogue(
-                "judge",
-                "The parties have accepted the court's resolution. This case is settled!"
-            )
-
-            st.markdown(
-                '<div class="verdict"><div class="verdict-word">CASE SETTLED</div></div>',
-                unsafe_allow_html=True
-            )
-
+            courtroom(active=["judge"], moods={"judge": "confident", "pros": "confident", "def": "confident"})
+            dialogue("judge", "The parties have accepted the court's resolution. This case is settled!")
+            st.markdown('<div class="verdict"><div class="verdict-word">CASE SETTLED</div></div>',
+                        unsafe_allow_html=True)
             reward_cards(*st.session_state.rewards)
-
-            st.markdown(
-                '<div class="section-label">📜 FINAL ACTION PLAN</div>',
-                unsafe_allow_html=True
-            )
-
-            evidence_cards(trial.get("action_plan", []))
-
+            # Official court order with both players' names and the agreed action plan
+            court_order(case, trial.get("action_plan", []))
         else:
-            courtroom(
-                active=["judge"],
-                moods={
-                    "judge": "nervous",
-                    "pros": "nervous",
-                    "def": "nervous"
-                }
-            )
-
+            courtroom(active=["judge"], moods={"judge": "nervous", "pros": "nervous", "def": "nervous"})
             if st.session_state.round < MAX_ROUNDS:
-                dialogue(
-                    "judge",
-                    "The proposed resolution was not accepted by both parties. "
-                    "Very well, the court will attempt another resolution."
-                )
+                dialogue("judge", "The proposed resolution was not accepted by both parties. "
+                                  "Very well, the court will attempt another resolution.")
             else:
-                dialogue(
-                    "judge",
-                    "The proposed resolution was not accepted by both parties, "
-                    "and this court has run out of attempts."
-                )
+                dialogue("judge", "The proposed resolution was not accepted by both parties, "
+                                  "and this court has run out of attempts.")
 
-            st.markdown(
-                '<div class="verdict fail"><div class="verdict-word">NO DEAL</div></div>',
-                unsafe_allow_html=True
-            )
-
+            st.markdown('<div class="verdict fail"><div class="verdict-word">NO DEAL</div></div>',
+                        unsafe_allow_html=True)
             reward_cards(*st.session_state.rewards)
-
             if st.session_state.round < MAX_ROUNDS:
-                st.text_area(
-                    "Why was the ruling rejected? (optional)",
-                    key="appeal_feedback",
-                    placeholder="Explain what the judge got wrong...",
-                    height=110
-                )
-
-                st.button(
-                    "Request revised ruling",
-                    key="retry",
-                    on_click=retry_resolution,
-                    use_container_width=True
-                )
+                st.text_area("Why was the ruling rejected? (optional)", key="appeal_feedback",
+                             placeholder="Explain what the judge got wrong...", height=110)
+                st.button("Request revised ruling", key="retry", on_click=retry_resolution,
+                          use_container_width=True)
             else:
-                st.warning(
-                    "The court has reached its maximum number of resolution attempts."
-                )
+                st.warning("The court has reached its maximum number of resolution attempts.")
+        st.button("Start a new trial", key="reset_verdict", on_click=reset_trial, use_container_width=True)
 
-        # NEW: Six simulated jurors vote on the proposed resolution
-        show_jury_deliberation(
-            trial.get("resolution", ""),
-            trial.get("action_plan", [])
-        )
-
-        st.button(
-            "Start a new trial",
-            key="reset_verdict",
-            on_click=reset_trial,
-            use_container_width=True
-        )
-
+    with st.expander("📁 View submitted statements", expanded=False):
+        a_col, b_col = st.columns(2)  # Person A on the left, Person B on the right
+        with b_col:
+            st.markdown(f"**{esc(NAME_B).upper()}**")
+            st.write(case["person_b"])
+        with a_col:
+            st.markdown(f"**{esc(NAME_A).upper()}**")
+            st.write(case["person_a"])
 
     st.divider()
     if stage_name != "VERDICT":
