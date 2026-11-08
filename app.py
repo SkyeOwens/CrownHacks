@@ -343,6 +343,36 @@ hr {border-color: var(--line) !important;}
   .witness {transform: translateX(-50%) scale(.7); transform-origin: bottom center;}
   .chair, .clock, .motto {display: none;}
 }
+
+/* Hide Streamlit's top toolbar */
+[data-testid="stHeader"] {
+    display: none !important;
+}
+
+/* Remove unnecessary space above the game */
+.block-container {
+    padding-top: 1rem !important;
+}
+
+/* Keep the app's controls visible */
+[data-testid="stAppViewContainer"] {
+    padding-top: 0 !important;
+}
+/* Hide the audio player while keeping the music element */
+.stApp [data-testid="stAudio"] {
+    position: absolute !important;
+    width: 1px !important;
+    height: 1px !important;
+    overflow: hidden !important;
+    opacity: 0 !important;
+    pointer-events: none !important;
+}
+
+/* Remove the player's layout space */
+.stApp [data-testid="stAudio"] audio {
+    width: 1px !important;
+    height: 1px !important;
+}
 </style>
 """, unsafe_allow_html=True)
 
@@ -498,6 +528,29 @@ MOOD_EDITS = {
                              (7, 5, "a"), (7, 7, "a"), (7, 8, "a"), (7, 10, "a")],
     ("judge", "nervous"): [(7, 6, "x"), (7, 9, "x"), (1, 7, "x"), (1, 8, "x")],
 }
+
+# Jury facial expressions
+# All six jurors share the same 10-pixel-wide sprite grid.
+
+for i in range(6):
+    # Happy: smiling eyes and an upward-curving mouth
+    MOOD_EDITS[(f"juror{i}", "happy")] = [
+        (4, 2, "s"), (4, 3, "e"),
+        (4, 7, "e"), (4, 8, "s"),
+        (6, 4, "m"), (6, 5, "s"),
+        (6, 6, "s"), (6, 7, "m"),
+        (7, 5, "m"), (7, 6, "m")
+    ]
+
+    # Angry: lowered eyebrows and a frown
+    MOOD_EDITS[(f"juror{i}", "angry")] = [
+        (3, 2, "k"), (3, 3, "k"),
+        (3, 7, "k"), (3, 8, "k"),
+        (6, 4, "s"), (6, 5, "m"),
+        (6, 6, "m"), (6, 7, "s"),
+        (7, 4, "m"), (7, 7, "m")
+    ]
+
 MOOD_COLORS = {"~": "#7fc8ff", "x": "#ff5c5c"}
 
 # ---------- unlockable outfits: color swaps for the lawyers ----------
@@ -585,12 +638,35 @@ def courtroom(active=(), moods=None):
         return (f'<div class="witness" style="left:{left}"><div class="w-rail"></div><div class="w-posts"></div>'
                 '<div class="w-box"></div><div class="w-mic"></div><div class="plate">WITNESS</div></div>')
 
-    # two rows of jurors (back row sits higher), each bobbing on its own beat
-    seats = [(18, 100), (82, 100), (146, 100), (-12, 46), (52, 46), (116, 46)]  # back row, then front row
+    
+    # Six jurors with expressions based on their simulated votes
+    seats = [
+        (18, 100), (82, 100), (146, 100),
+        (-12, 46), (52, 46), (116, 46)
+    ]
+
+    # Neutral until the verdict; happy or angry after voting
+    jury_moods = ["normal"] * 6
+
+    if st.session_state.get("stage") == "VERDICT":
+        current_trial = st.session_state.get("trial") or {}
+        votes = jury_votes(
+            current_trial.get("resolution", ""),
+            current_trial.get("action_plan", [])
+        )
+        jury_moods = [
+            "happy" if vote else "angry"
+            for vote in votes
+        ]
+
     jurors = "".join(
-        f'<div class="juror" style="left:{x + 6}px; bottom:{y}px; animation-delay:-{i * 0.37:.2f}s;'
-        f'{" z-index:2;" if y < 60 else ""}">{sprite_tag(f"juror{i}", scale=5, cls="j")}</div>'
-        for i, (x, y) in enumerate(seats))
+        f'<div class="juror" style="left:{x + 6}px; bottom:{y}px; '
+        f'animation-delay:-{i * 0.37:.2f}s;'
+        f'{" z-index:2;" if y < 60 else ""}">'
+        f'{sprite_tag(f"juror{i}", scale=5, mood=jury_moods[i], cls="j")}'
+        f'</div>'
+        for i, (x, y) in enumerate(seats)
+    )
     jury = (f'<div class="jury"><div class="j-back"></div>{jurors}'
             '<div class="j-front"><div class="plate">JURY</div></div></div>')
 
@@ -918,6 +994,7 @@ def init_state():
 
 
 def reset_trial():
+    st.session_state.jury_revealed = False
     st.session_state.case = None
     st.session_state.stage = "SUBMIT"
     st.session_state.trial = None
@@ -969,6 +1046,31 @@ def pick_outfit():
 def toggle_music():
     st.session_state.music = st.session_state.music_toggle
 
+import re
+
+def generate_case_title(person_a, person_b):
+    text = (person_a + " " + person_b).lower()
+
+    topics = [
+        (["pizza", "leftovers"], "The Leftovers Mystery"),
+        (["food", "snack", "fridge", "eating"], "The Great Food Dispute"),
+        (["dish", "kitchen", "cleaning", "mess"], "The Cleaning Conspiracy"),
+        (["bathroom", "toilet", "shower"], "The Bathroom Battle"),
+        (["noise", "music", "loud", "sleep"], "The Midnight Noise Affair"),
+        (["rent", "bill", "money", "owe", "paid"], "The Missing Money Mystery"),
+        (["charger", "phone", "borrow"], "The Case of the Borrowed Goods"),
+        (["guest", "visitor", "party"], "The Unexpected Guest Affair"),
+        (["parking", "car"], "The Parking Lot Showdown"),
+        (["laundry", "clothes"], "The Laundry Room Incident"),
+        (["trash", "garbage"], "The Trash Can Conspiracy"),
+        (["temperature", "thermostat", "air conditioning"], "The Thermostat Wars"),
+    ]
+
+    for keywords, title in topics:
+        if any(re.search(r"\b" + re.escape(word) + r"\b", text) for word in keywords):
+            return title
+
+    return "The Case of the Great Disagreement"
 
 def start_trial():
     """Start Trial button: check the statements, then switch to the loading screen."""
@@ -986,7 +1088,11 @@ def start_trial():
     progress = load_progress()
     progress["theme"], progress["outfit"] = st.session_state.theme, st.session_state.outfit
     save_progress(progress)
-    st.session_state.case = {"title": title or "Untitled Case", "person_a": a, "person_b": b}
+    st.session_state.case = {
+    "title": generate_case_title(a, b),
+    "person_a": a,
+    "person_b": b
+}
     st.session_state.trial = None
     st.session_state.round = 1
     st.session_state.choices = {"a": None, "b": None}
@@ -1118,7 +1224,6 @@ if st.session_state.case is None:
              "Present both statements, and this court will hear the arguments, weigh a compromise, "
              "and issue an action plan.")
 
-    st.text_input("Case title (optional)", key="in_title", placeholder="e.g. The Case of the Stolen Snacks")
     right, left = st.columns(2)
     with left:
         st.markdown(f"### 🟦 {esc(NAME_B).upper()}")
@@ -1200,6 +1305,7 @@ else:
                       on_click=lambda: st.session_state.update({"stage": "VERDICT"}))
 
     elif stage_name == "VERDICT":
+        st.session_state.jury_revealed = True
         accepted = all(value == "accept" for value in st.session_state.choices.values())
         if st.session_state.get("stage_error"):
             st.error(st.session_state.pop("stage_error"))
