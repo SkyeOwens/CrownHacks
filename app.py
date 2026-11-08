@@ -305,25 +305,25 @@ h3 {font-size: .9rem !important; line-height: 1.6 !important;}
   font: .7rem 'Press Start 2P', monospace; color: #fff; background: var(--gold); border: 3px solid var(--dark);}
 .stApp .howto .step span {font: 1.25rem/1.15 'VT323', monospace; color: var(--ink);}
 /* ---------- official court order (shown when a case settles) ---------- */
-.order {position: relative; margin: 1.4rem 0 1rem; padding: 2rem 2.2rem 1.6rem; background: #fffdf5;
+.court-order {position: relative; margin: 1.4rem 0 1rem; padding: 2rem 2.2rem 1.6rem; background: #fffdf5;
   border: 4px solid var(--dark); outline: 6px double var(--gold); outline-offset: -14px; box-shadow: 8px 8px 0 var(--dark);
   animation: stamp .45s steps(5) 1.5s both;}
 .order-court {text-align: center; font: .55rem 'Press Start 2P', monospace; color: var(--gold); letter-spacing: .2em;}
 .order-title {text-align: center; font: clamp(1rem, 3vw, 1.5rem) 'Press Start 2P', monospace; color: var(--dark); margin: .8rem 0 .4rem;}
 .order-meta {display: flex; justify-content: center; flex-wrap: wrap; gap: .3rem 1.4rem; font: 1.2rem 'VT323', monospace; color: #7a5a3a; margin-bottom: 1rem;}
-.stApp .order p, .stApp .order li {font: 1.35rem/1.25 'VT323', monospace; color: var(--ink);}
-.order .parties {text-align: center; margin: .2rem 0 1rem;}
-.order ol {margin: .4rem 0 1rem 1.4rem; padding: 0;}
-.order li {margin: .35rem 0;}
-.order .signatures {display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 1.2rem; margin-top: 1.4rem;}
-.order .sig {text-align: center;}
-.order .sig-name {font: italic 1.6rem 'VT323', monospace; color: #2f3e8a; border-bottom: 3px solid var(--dark); padding-bottom: .1rem;}
-.order .sig-role {font: .42rem/2 'Press Start 2P', monospace; color: #7a5a3a;}
-.order .seal-stamp {position: absolute; right: 1.6rem; top: 1.4rem; width: 86px; height: 86px; border-radius: 50%;
+.stApp .court-order p, .stApp .court-order li {font: 1.35rem/1.25 'VT323', monospace; color: var(--ink);}
+.court-order .parties {text-align: center; margin: .2rem 0 1rem;}
+.court-order ol {margin: .4rem 0 1rem 1.4rem; padding: 0;}
+.court-order li {margin: .35rem 0;}
+.court-order .signatures {display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 1.2rem; margin-top: 1.4rem;}
+.court-order .sig {text-align: center;}
+.court-order .sig-name {font: italic 1.6rem 'VT323', monospace; color: #2f3e8a; border-bottom: 3px solid var(--dark); padding-bottom: .1rem;}
+.court-order .sig-role {font: .42rem/2 'Press Start 2P', monospace; color: #7a5a3a;}
+.court-order .seal-stamp {position: absolute; right: 1.6rem; top: 1.4rem; width: 86px; height: 86px; border-radius: 50%;
   display: flex; align-items: center; justify-content: center; text-align: center; transform: rotate(-12deg);
   font: .45rem/1.6 'Press Start 2P', monospace; color: var(--red); border: 4px double var(--red); background: rgba(200,65,63,.06);}
-.stApp .order .keep {text-align: center; font: 1.05rem 'VT323', monospace; color: #8a7356; margin: 1rem 0 0;}
-@media (max-width: 640px) {.order .seal-stamp {position: static; margin: 0 auto .6rem; transform: rotate(-8deg);}}
+.stApp .court-order .keep {text-align: center; font: 1.05rem 'VT323', monospace; color: #8a7356; margin: 1rem 0 0;}
+@media (max-width: 640px) {.court-order .seal-stamp {position: static; margin: 0 auto .6rem; transform: rotate(-8deg);}}
 /* ---------- widgets ---------- */
 .stButton>button {background: var(--red) !important; color: #fff !important; border: 4px solid var(--dark) !important; border-radius: 0 !important; box-shadow: inset -4px -4px 0 #8f2835, inset 4px 4px 0 #ff8a8f, 4px 4px 0 var(--dark) !important; min-height: 3rem; transition: none !important;}
 .stButton>button p {font-family: 'Press Start 2P', monospace !important; font-size: .62rem !important; line-height: 1.6 !important; color: #fff !important;}
@@ -610,6 +610,17 @@ CAST = {
 }
 
 
+def jury_votes(resolution, action_plan):
+    """Generate repeatable simulated jury votes for a case.
+    Four jurors approve and two dissent; which two depends on the ruling,
+    so the votes stay the same every time the page reloads."""
+    content = str(resolution) + "|" + str(action_plan)
+    seed = hashlib.sha256(content.encode("utf-8")).digest()
+    dissenters = {seed[0] % 6}
+    dissenters.add((seed[0] % 6 + 1 + seed[1] % 5) % 6)
+    return [i not in dissenters for i in range(6)]
+
+
 def courtroom(active=(), moods=None):
     """Draw the whole courtroom. `active` lists who is speaking (they light up and,
     at the tables, stand up); everyone else dims. `moods` maps "pros"/"def"/"judge"
@@ -719,7 +730,7 @@ def dialogue(who, text):
 
 def interjection(word):
     """Full-screen pixel banner that flashes across the screen, shakes the court, then disappears."""
-    kind = {"OVERRULED!": "bad"}.get(word, "order")
+    kind = "order"
     st.markdown(f'<div class="interjection {kind}"><div class="ij-band"><div class="ij-word">{word}</div></div></div>',
                 unsafe_allow_html=True)
 
@@ -784,7 +795,7 @@ def court_order(case, plan):
     case_no = f'{today.year}-{int(hashlib.md5(case["title"].encode("utf-8")).hexdigest(), 16) % 10000:04d}'
     steps = "".join(f"<li>{esc(named(step))}</li>" for step in plan) or "<li>The parties will follow the court's resolution.</li>"
     st.markdown(
-        f'<div class="order"><div class="seal-stamp">CASE<br>SETTLED</div>'
+        f'<div class="court-order"><div class="seal-stamp">CASE<br>SETTLED</div>'
         f'<div class="order-court">★ COURT OF AI ★</div>'
         f'<div class="order-title">OFFICIAL COURT ORDER</div>'
         f'<div class="order-meta"><span>Case No. {case_no}</span><span>{today.strftime("%B %d, %Y")}</span></div>'
@@ -1157,8 +1168,6 @@ def advance():
 
 def choose(side, value):
     st.session_state.choices[side] = value
-    if value == "decline":
-        st.session_state.flash = "OVERRULED!"
 
 
 # =====================================================================

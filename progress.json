@@ -1,10 +1,12 @@
 {
-  "trials": 4,
+  "trials": 9,
   "settled": 2,
   "achievements": [
     "first_trial",
     "settled_r1",
-    "snack"
+    "snack",
+    "round3",
+    "hung"
   ],
   "theme": "classic",
   "outfit": "classic"
