@@ -300,6 +300,7 @@ hr {border-color: var(--line) !important;}
   .witness {transform: translateX(-50%) scale(.7); transform-origin: bottom center;}
   .chair, .clock, .motto {display: none;}
 }
+
 </style>
 """, unsafe_allow_html=True)
 
@@ -939,6 +940,31 @@ def pick_outfit():
 def toggle_music():
     st.session_state.music = st.session_state.music_toggle
 
+import re
+
+def generate_case_title(person_a, person_b):
+    text = (person_a + " " + person_b).lower()
+
+    topics = [
+        (["pizza", "leftovers"], "The Leftovers Mystery"),
+        (["food", "snack", "fridge", "eating"], "The Great Food Dispute"),
+        (["dish", "kitchen", "cleaning", "mess"], "The Cleaning Conspiracy"),
+        (["bathroom", "toilet", "shower"], "The Bathroom Battle"),
+        (["noise", "music", "loud", "sleep"], "The Midnight Noise Affair"),
+        (["rent", "bill", "money", "owe", "paid"], "The Missing Money Mystery"),
+        (["charger", "phone", "borrow"], "The Case of the Borrowed Goods"),
+        (["guest", "visitor", "party"], "The Unexpected Guest Affair"),
+        (["parking", "car"], "The Parking Lot Showdown"),
+        (["laundry", "clothes"], "The Laundry Room Incident"),
+        (["trash", "garbage"], "The Trash Can Conspiracy"),
+        (["temperature", "thermostat", "air conditioning"], "The Thermostat Wars"),
+    ]
+
+    for keywords, title in topics:
+        if any(re.search(r"\b" + re.escape(word) + r"\b", text) for word in keywords):
+            return title
+
+    return "The Case of the Great Disagreement"
 
 def start_trial():
     """Start Trial button: check the statements, then switch to the loading screen."""
@@ -956,7 +982,11 @@ def start_trial():
     progress = load_progress()
     progress["theme"], progress["outfit"] = st.session_state.theme, st.session_state.outfit
     save_progress(progress)
-    st.session_state.case = {"title": title or "Untitled Case", "person_a": a, "person_b": b}
+    st.session_state.case = {
+    "title": generate_case_title(a, b),
+    "person_a": a,
+    "person_b": b
+}
     st.session_state.trial = None
     st.session_state.round = 1
     st.session_state.choices = {"a": None, "b": None}
@@ -1087,7 +1117,6 @@ if st.session_state.case is None:
              "Present both statements, and this court will hear the arguments, weigh a compromise, "
              "and issue an action plan.")
 
-    st.text_input("Case title (optional)", key="in_title", placeholder="e.g. The Case of the Stolen Snacks")
     right, left = st.columns(2)
     with left:
         st.markdown(f"### 🟦 {esc(NAME_B).upper()}")
