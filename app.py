@@ -666,6 +666,52 @@ def evidence_cards(plan):
             unsafe_allow_html=True,
         )
 
+import hashlib
+
+def jury_votes(resolution, action_plan):
+    """Generate repeatable simulated jury votes for a case."""
+    content = str(resolution) + "|" + str(action_plan)
+    seed = hashlib.sha256(content.encode("utf-8")).digest()
+
+    # Four jurors approve, two dissent.
+    # Their positions vary by case, not randomly on reruns.
+    dissenters = {seed[0] % 6}
+    dissenters.add((seed[0] % 6 + 1 + seed[1] % 5) % 6)
+
+    return [i not in dissenters for i in range(6)]
+
+def show_jury_deliberation(resolution, action_plan):
+    votes = jury_votes(resolution, action_plan)
+    approved = sum(votes)
+
+    st.markdown("### ⚖️ JURY DELIBERATION")
+    st.caption("Six simulated jurors review the court's proposed resolution.")
+
+    columns = st.columns(6)
+
+    for i, (column, approved_vote) in enumerate(zip(columns, votes)):
+        with column:
+            st.markdown(f"**Juror {i + 1}**")
+            st.markdown("🟩 FAIR" if approved_vote else "🟥 DISAGREE")
+
+    st.markdown(
+    f"""
+    <div style="
+        background-color: #173b2e;
+        color: #fff4d6;
+        padding: 18px;
+        border: 3px solid #c69c55;
+        font-weight: bold;
+        text-align: center;
+        font-size: 18px;
+        margin-top: 15px;
+        margin-bottom: 15px;
+    ">
+        ⚖️ JURY VERDICT: {approved}–{6 - approved} — MAJORITY APPROVES
+    </div>
+    """,
+    unsafe_allow_html=True
+)
 
 def reward_cards(new_achievements, new_unlocks):
     for key in new_achievements:
@@ -1105,56 +1151,119 @@ else:
             st.button("⚖ Reveal Verdict", key="see_verdict", use_container_width=True,
                       on_click=lambda: st.session_state.update({"stage": "VERDICT"}))
 
+    
     elif stage_name == "VERDICT":
         accepted = all(value == "accept" for value in st.session_state.choices.values())
+
         if st.session_state.get("stage_error"):
             st.error(st.session_state.pop("stage_error"))
 
-        # save achievements once per verdict
+        # Save achievements once per verdict
         if not st.session_state.verdict_recorded:
             progress = load_progress()
-            st.session_state.rewards = record_verdict(progress, case, st.session_state.round, accepted, MAX_ROUNDS)
+            st.session_state.rewards = record_verdict(
+                progress,
+                case,
+                st.session_state.round,
+                accepted,
+                MAX_ROUNDS
+            )
             save_progress(progress)
             st.session_state.verdict_recorded = True
 
         gavel_verdict()
+
         if accepted:
-            courtroom(active=["judge"], moods={"judge": "confident", "pros": "confident", "def": "confident"})
-            dialogue("judge", "The parties have accepted the court's resolution. This case is settled!")
-            st.markdown('<div class="verdict"><div class="verdict-word">CASE SETTLED</div></div>',
-                        unsafe_allow_html=True)
+            courtroom(
+                active=["judge"],
+                moods={
+                    "judge": "confident",
+                    "pros": "confident",
+                    "def": "confident"
+                }
+            )
+
+            dialogue(
+                "judge",
+                "The parties have accepted the court's resolution. This case is settled!"
+            )
+
+            st.markdown(
+                '<div class="verdict"><div class="verdict-word">CASE SETTLED</div></div>',
+                unsafe_allow_html=True
+            )
+
             reward_cards(*st.session_state.rewards)
-            st.markdown('<div class="section-label">📜 FINAL ACTION PLAN</div>', unsafe_allow_html=True)
+
+            st.markdown(
+                '<div class="section-label">📜 FINAL ACTION PLAN</div>',
+                unsafe_allow_html=True
+            )
+
             evidence_cards(trial.get("action_plan", []))
+
         else:
-            courtroom(active=["judge"], moods={"judge": "nervous", "pros": "nervous", "def": "nervous"})
-            if st.session_state.round < MAX_ROUNDS:
-                dialogue("judge", "The proposed resolution was not accepted by both parties. "
-                                  "Very well, the court will attempt another resolution.")
-            else:
-                dialogue("judge", "The proposed resolution was not accepted by both parties, "
-                                  "and this court has run out of attempts.")
+            courtroom(
+                active=["judge"],
+                moods={
+                    "judge": "nervous",
+                    "pros": "nervous",
+                    "def": "nervous"
+                }
+            )
 
-            st.markdown('<div class="verdict fail"><div class="verdict-word">NO DEAL</div></div>',
-                        unsafe_allow_html=True)
+            if st.session_state.round < MAX_ROUNDS:
+                dialogue(
+                    "judge",
+                    "The proposed resolution was not accepted by both parties. "
+                    "Very well, the court will attempt another resolution."
+                )
+            else:
+                dialogue(
+                    "judge",
+                    "The proposed resolution was not accepted by both parties, "
+                    "and this court has run out of attempts."
+                )
+
+            st.markdown(
+                '<div class="verdict fail"><div class="verdict-word">NO DEAL</div></div>',
+                unsafe_allow_html=True
+            )
+
             reward_cards(*st.session_state.rewards)
-            if st.session_state.round < MAX_ROUNDS:
-                st.text_area("Why was the ruling rejected? (optional)", key="appeal_feedback",
-                             placeholder="Explain what the judge got wrong...", height=110)
-                st.button("Request revised ruling", key="retry", on_click=retry_resolution,
-                          use_container_width=True)
-            else:
-                st.warning("The court has reached its maximum number of resolution attempts.")
-        st.button("Start a new trial", key="reset_verdict", on_click=reset_trial, use_container_width=True)
 
-    with st.expander("📁 View submitted statements", expanded=False):
-        a_col, b_col = st.columns(2)  # Person A on the left, Person B on the right
-        with b_col:
-            st.markdown(f"**{esc(NAME_B).upper()}**")
-            st.write(case["person_b"])
-        with a_col:
-            st.markdown(f"**{esc(NAME_A).upper()}**")
-            st.write(case["person_a"])
+            if st.session_state.round < MAX_ROUNDS:
+                st.text_area(
+                    "Why was the ruling rejected? (optional)",
+                    key="appeal_feedback",
+                    placeholder="Explain what the judge got wrong...",
+                    height=110
+                )
+
+                st.button(
+                    "Request revised ruling",
+                    key="retry",
+                    on_click=retry_resolution,
+                    use_container_width=True
+                )
+            else:
+                st.warning(
+                    "The court has reached its maximum number of resolution attempts."
+                )
+
+        # NEW: Six simulated jurors vote on the proposed resolution
+        show_jury_deliberation(
+            trial.get("resolution", ""),
+            trial.get("action_plan", [])
+        )
+
+        st.button(
+            "Start a new trial",
+            key="reset_verdict",
+            on_click=reset_trial,
+            use_container_width=True
+        )
+
 
     st.divider()
     if stage_name != "VERDICT":
